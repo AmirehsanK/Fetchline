@@ -259,7 +259,16 @@ running again from reset, which gives the same run because the machine has no ot
   Any stretch of a run can be explained on its own, because whatever an event is about was in
   the pipeline in the cycle of the event.
 - **State:** registers with ABI names, memory, console, and counters (cycles, CPI, stalls and
-  flushes by cause, forwards by path, prediction accuracy).
+  flushes by cause, forwards by path, prediction accuracy). The registers are named the way the
+  program names them, and the one written in the cycle on screen is in inverse video. Memory is
+  a hex dump, a word to a row in the order its bytes lie, of each section that is not code and
+  of the stack from the stack pointer up, with the bytes just stored marked. Memory, the console
+  and the counters share one pane with three names for a title. A counter for a cause that has
+  not happened is left out.
+- **Layout:** three, chosen by the size of the window. A phone has one column and the page
+  scrolls. From 900 pixels wide the source sits beside the diagram and the log, with the state
+  panes in a row below. From 1,200 by 600 the monitor fills the window and every pane scrolls
+  inside itself: source, then diagram over log, then registers over the shared pane.
 - **Controls:** assemble, step, step back, run with a speed slider, and a timeline to scrub. Step
   back and scrub move within the records the session holds, and replay from reset only for a
   cycle older than those. Long runs execute in slices so the page stays responsive.
@@ -420,7 +429,7 @@ download size is measured and written down.
 - [x] 7.3 The editor: the assembler's own lexer for highlighting, its diagnostics, the gutter
 - [x] 7.4 The staircase as a character grid, with held and squashed marks and forwarding arrows
 - [x] 7.5 The hazard log, and jumping to the cycle of a line
-- [ ] 7.6 The state panes: registers, memory, console and counters
+- [x] 7.6 The state panes: registers, memory, console and counters
 - [ ] 7.7 The controls, the function keys and the start-up sequence
 - [ ] 7.8 Checked in a real browser; the download size measured and written down
 

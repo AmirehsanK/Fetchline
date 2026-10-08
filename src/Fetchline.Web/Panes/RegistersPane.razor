@@ -1,0 +1,37 @@
+@using Fetchline.Core.Isa
+@using Fetchline.Viz.Explain
+@using Fetchline.Viz.State
+
+@*
+    The thirty-two registers after the cycle on screen, named the way the program names them.
+    The one the instruction in WB has just written is in inverse video.
+*@
+<section class="pane registers" aria-label="@Messages.RegistersTitle">
+    <h2 class="pane-title">@Messages.RegistersTitle</h2>
+    <dl class="pane-body register-grid">
+        @foreach (var cell in RegisterBank.Of(Session, Style))
+        {
+            <div class="register" title="@Describe(cell)">
+                <dt>@cell.Name</dt>
+                <dd class="@(cell.Written ? "inverse" : null)">@cell.Value.ToString("x8", CultureInfo.InvariantCulture)</dd>
+            </div>
+        }
+    </dl>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public Session Session { get; set; } = default!;
+
+    /// <summary>How the registers are named: as the program names them.</summary>
+    [Parameter]
+    public RegisterStyle Style { get; set; } = RegisterStyle.Abi;
+
+    [Parameter, EditorRequired]
+    public IMessages Messages { get; set; } = default!;
+
+    // Hex is what the pane shows; the same value in decimal, both ways, is one hover away.
+    private static string Describe(RegisterCell cell) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"x{cell.Index} = {cell.Value} = {(int)cell.Value}");
+}

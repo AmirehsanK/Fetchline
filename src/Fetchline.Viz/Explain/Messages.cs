@@ -1,4 +1,5 @@
 using System.Globalization;
+using Fetchline.Core.Pipeline;
 
 namespace Fetchline.Viz.Explain;
 
@@ -72,6 +73,33 @@ public interface IMessages
     /// <summary>In the playground's legend, beside the line of a forward.</summary>
     string ForwardedLegend { get; }
 
+    /// <summary>The names of the playground's panes, as their titles.</summary>
+    string SourceTitle { get; }
+
+    string PipelineTitle { get; }
+
+    string LogTitle { get; }
+
+    string RegistersTitle { get; }
+
+    string MemoryTitle { get; }
+
+    string ConsoleTitle { get; }
+
+    string CountersTitle { get; }
+
+    /// <summary>What the console says while the program has printed nothing.</summary>
+    string NothingPrinted { get; }
+
+    /// <summary>What the memory pane says when there is no program to have any.</summary>
+    string NoMemory { get; }
+
+    /// <summary>A problem under the source: what is wrong, and what might put it right.</summary>
+    string Problem(string message, string? hint);
+
+    /// <summary>Under the problems that are listed, how many more there are.</summary>
+    string MoreProblems(int count);
+
     /// <summary>What the pipeline pane says before the first cycle has run.</summary>
     string ReadyToRun { get; }
 
@@ -129,6 +157,33 @@ public interface IMessages
 
     /// <summary>How many of the branches and jumps decided were guessed wrong: <c>9 of 10</c>.</summary>
     string Guesses(int wrong, int decided);
+
+    /// <summary>The label of the counter of instructions that completed.</summary>
+    string InstructionsHeading { get; }
+
+    /// <summary>The label of the counter of redirects that threw something away.</summary>
+    string FlushesHeading { get; }
+
+    /// <summary>The label of the counter of operands taken from a latch.</summary>
+    string ForwardsHeading { get; }
+
+    /// <summary>The label of the counter of branches and jumps decided.</summary>
+    string BranchesHeading { get; }
+
+    /// <summary>The label of the counter of those that were taken.</summary>
+    string TakenHeading { get; }
+
+    string LoadsHeading { get; }
+
+    string StoresHeading { get; }
+
+    string TrapsHeading { get; }
+
+    /// <summary>What a stall is called by its cause, in a list of counters.</summary>
+    string NameOf(StallCause cause);
+
+    /// <summary>What a flush is called by its cause, in a list of counters.</summary>
+    string NameOf(FlushCause cause);
 
     /// <summary>What marks a row whose run differed from the reference machine.</summary>
     string WrongAnswer { get; }
@@ -205,6 +260,28 @@ public sealed class EnglishMessages : IMessages
 
     public string ForwardedLegend => "a value handed on";
 
+    public string SourceTitle => "SOURCE";
+
+    public string PipelineTitle => "PIPELINE";
+
+    public string LogTitle => "LOG";
+
+    public string RegistersTitle => "REGISTERS";
+
+    public string MemoryTitle => "MEMORY";
+
+    public string ConsoleTitle => "CONSOLE";
+
+    public string CountersTitle => "COUNTERS";
+
+    public string NothingPrinted => "The program has printed nothing yet.";
+
+    public string NoMemory => "No program, so no memory to show.";
+
+    public string Problem(string message, string? hint) => hint is null ? message : $"{message}; {hint}";
+
+    public string MoreProblems(int count) => $"and {Count(count, "more", "more")}";
+
     public string ReadyToRun => "RV32IM READY\n\nSTEP runs one cycle. RUN goes on to the end.";
 
     public string NothingToRun =>
@@ -254,6 +331,39 @@ public sealed class EnglishMessages : IMessages
 
     public string Guesses(int wrong, int decided) =>
         string.Create(CultureInfo.InvariantCulture, $"{wrong} of {decided}");
+
+    public string InstructionsHeading => "instructions";
+
+    public string FlushesHeading => "flushes";
+
+    public string ForwardsHeading => "forwards";
+
+    public string BranchesHeading => "branches";
+
+    public string TakenHeading => "taken";
+
+    public string LoadsHeading => "loads";
+
+    public string StoresHeading => "stores";
+
+    public string TrapsHeading => "traps";
+
+    // The same words the sentences of the log begin with.
+    public string NameOf(StallCause cause) => cause switch
+    {
+        StallCause.LoadUse => "load-use",
+        StallCause.DataHazard => "no forwarding",
+        StallCause.BranchOperand => "branch in ID",
+        _ => "multi-cycle",
+    };
+
+    public string NameOf(FlushCause cause) => cause switch
+    {
+        FlushCause.Branch => "branch",
+        FlushCause.System => "system instruction",
+        FlushCause.Trap => "trap",
+        _ => "stop",
+    };
 
     public string WrongAnswer => "wrong";
 

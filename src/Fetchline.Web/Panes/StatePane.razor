@@ -1,0 +1,133 @@
+@using Fetchline.Viz.Explain
+@using Fetchline.Viz.State
+@using Microsoft.AspNetCore.Components.Rendering
+
+@*
+    The counters, memory and the console share one pane; its title is the three names, and the
+    one chosen is in inverse video. All three show the run as it was after the cycle on screen.
+*@
+<section class="pane state" aria-label="@Title(_tab)">
+    <h2 class="pane-title tabs" role="tablist">
+        @foreach (var tab in Enum.GetValues<Tab>())
+        {
+            <button type="button" role="tab" class="tab @(tab == _tab ? "inverse" : null)"
+                    aria-selected="@(tab == _tab ? "true" : "false")" @onclick="() => _tab = tab">@Name(tab)</button>
+        }
+    </h2>
+    <div class="pane-body" role="tabpanel" tabindex="0">
+        @if (_tab == Tab.Counters)
+        {
+            <dl class="counters">
+                @foreach (var counter in Counters.Of(Session.Stats, Messages))
+                {
+                    <div class="@(counter.Part ? "counter part" : "counter")">
+                        <dt>@counter.Label</dt>
+                        <dd>@counter.Value</dd>
+                    </div>
+                }
+            </dl>
+        }
+        else if (_tab == Tab.Console)
+        {
+            @if (Session.Output.Length == 0)
+            {
+                <p class="dim state-empty">@Messages.NothingPrinted</p>
+            }
+            else
+            {
+                <pre class="console">@Session.Output</pre>
+            }
+        }
+        else if (Regions is { Count: > 0 } regions)
+        {
+            var chosen = regions.FirstOrDefault(region => region.Name == _region) ?? regions[0];
+            @if (regions.Count > 1)
+            {
+                <div class="regions" role="group">
+                    @foreach (var region in regions)
+                    {
+                        <button type="button" class="tab @(region.Name == chosen.Name ? "inverse" : null)"
+                                aria-pressed="@(region.Name == chosen.Name ? "true" : "false")"
+                                @onclick="() => _region = region.Name">@region.Name</button>
+                    }
+                </div>
+            }
+
+            <pre class="dump">@Dump(chosen)</pre>
+        }
+        else
+        {
+            <p class="dim state-empty">@Messages.NoMemory</p>
+        }
+    </div>
+</section>
+
+@code {
+    private enum Tab
+    {
+        Counters,
+        Memory,
+        Console,
+    }
+
+    private Tab _tab = Tab.Counters;
+
+    // The region of memory chosen, by name: the regions themselves move as the stack grows.
+    private string? _region;
+
+    [Parameter, EditorRequired]
+    public Session Session { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IMessages Messages { get; set; } = default!;
+
+    private IReadOnlyList<MemoryRegion> Regions => MemoryDump.Regions(Session);
+
+    private string Title(Tab tab) => tab switch
+    {
+        Tab.Memory => Messages.MemoryTitle,
+        Tab.Console => Messages.ConsoleTitle,
+        _ => Messages.CountersTitle,
+    };
+
+    // The console's name carries a mark once there is something on it to read.
+    private string Name(Tab tab) => Title(tab) + (tab == Tab.Console && Session.Output.Length > 0 ? "*" : string.Empty);
+
+    // A hex dump: the address, eight bytes, and the same bytes as text. The bytes stored in the
+    // cycle on screen are in inverse video.
+    private RenderFragment Dump(MemoryRegion region) => builder =>
+    {
+        foreach (var row in MemoryDump.Rows(Session, region))
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "dim");
+            builder.AddContent(2, row.Address.ToString("x8", CultureInfo.InvariantCulture));
+            builder.CloseElement();
+            builder.AddContent(3, " ");
+
+            for (var i = 0; i < row.Bytes.Count; i++)
+            {
+                builder.AddContent(4, " ");
+                var text = row.Bytes[i].ToString("x2", CultureInfo.InvariantCulture);
+                if (row.Written[i])
+                {
+                    builder.OpenElement(5, "span");
+                    builder.AddAttribute(6, "class", "inverse");
+                    builder.AddContent(7, text);
+                    builder.CloseElement();
+                }
+                else
+                {
+                    builder.AddContent(8, text);
+                }
+            }
+
+            builder.AddContent(9, "  ");
+            builder.OpenElement(10, "span");
+            builder.AddAttribute(11, "class", "dim");
+            builder.AddContent(12, row.Text);
+            builder.CloseElement();
+            builder.AddContent(13, "\n");
+        }
+    };
+}

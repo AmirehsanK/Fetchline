@@ -1,3 +1,4 @@
+@using Fetchline.Core.Isa
 @using Fetchline.Viz.Editor
 @using Fetchline.Viz.Explain
 
@@ -12,11 +13,16 @@
         <span class="status-end">@Standing</span>
     </header>
 
-    <SourcePane View="_source" Record="_session.Record" OnEdit="Edit" />
+    <SourcePane View="_source" Record="_session.Record" Messages="Messages" OnEdit="Edit" />
 
     <PipelinePane Session="_session" Labels="_labels" Messages="Messages" />
 
     <LogPane Session="_session" Labels="_labels" Messages="Messages" OnSeek="Seek" />
+
+    <div class="side">
+        <RegistersPane Session="_session" Style="@(_labels?.Registers ?? RegisterStyle.Abi)" Messages="Messages" />
+        <StatePane Session="_session" Messages="Messages" />
+    </div>
 
     <footer class="softkeys" role="toolbar" aria-label="Run">
         <button type="button" class="softkey" disabled="@(!_session.CanStep)" @onclick="Run">

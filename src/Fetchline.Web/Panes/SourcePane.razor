@@ -9,32 +9,32 @@
     seen can never differ by more than their colours. Beside it is the gutter: the address each
     line was assembled at, and the stages its instructions are in during the cycle shown.
 *@
-<section class="pane source" aria-label="Source">
-    <h2 class="pane-title">SOURCE</h2>
+<section class="pane source" aria-label="@Messages.SourceTitle">
+    <h2 class="pane-title">@Messages.SourceTitle</h2>
     <div class="editor">
         <pre class="gutter" aria-hidden="true">@Gutter</pre>
         <div class="code">
             <pre class="paint" aria-hidden="true">@Paint</pre>
-            <textarea class="input" @ref="_input" aria-label="Assembly source"
+            <textarea class="input" @ref="_input" aria-label="@Messages.SourceTitle"
                       spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"
                       value="@View.Source" @oninput="Typed"></textarea>
         </div>
     </div>
     @if (View.Diagnostics.Count > 0)
     {
-        <ol class="problems" aria-label="Problems">
+        <ol class="problems">
             @foreach (var problem in View.Diagnostics.Take(MostProblems))
             {
                 <li>
                     <button type="button" class="problem" @onclick="() => Show(problem)">
                         <span class="inverse">@problem.Span.Line:@problem.Span.Column</span>
-                        @problem.Message@(problem.Hint is null ? string.Empty : " — " + problem.Hint)
+                        @Messages.Problem(problem.Message, problem.Hint)
                     </button>
                 </li>
             }
             @if (View.Diagnostics.Count > MostProblems)
             {
-                <li class="dim">and @(View.Diagnostics.Count - MostProblems) more</li>
+                <li class="dim">@Messages.MoreProblems(View.Diagnostics.Count - MostProblems)</li>
             }
         </ol>
     }
@@ -55,6 +55,9 @@
     /// <summary>The cycle being shown, for the gutter; null at reset.</summary>
     [Parameter]
     public CycleRecord? Record { get; set; }
+
+    [Parameter, EditorRequired]
+    public Fetchline.Viz.Explain.IMessages Messages { get; set; } = default!;
 
     /// <summary>Called with the whole text every time it changes.</summary>
     [Parameter]

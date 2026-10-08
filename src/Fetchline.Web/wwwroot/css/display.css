@@ -91,7 +91,7 @@ body {
 }
 
 /* On a screen big enough to hold it, the monitor is the window and its panes scroll inside it. */
-@media (min-width: 900px) and (min-height: 560px) {
+@media (min-width: 1200px) and (min-height: 600px) {
     body {
         height: 100dvh;
     }
@@ -219,7 +219,7 @@ body {
 .desk {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "status" "source" "keys" "pipeline" "log";
+    grid-template-areas: "status" "source" "keys" "pipeline" "log" "side";
     gap: 0.9lh 2ch;
 }
 
@@ -235,20 +235,59 @@ body {
     margin-left: auto;
 }
 
-@media (min-width: 900px) and (min-height: 560px) {
-    .glass:has(> .desk) {
-        overflow: hidden;
-    }
+/* The registers, and under or beside them the pane that memory, console and counters share. */
+.side {
+    grid-area: side;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.9lh 2ch;
+    min-width: 0;
+    min-height: 0;
+}
 
+/*
+    Three layouts. A phone has one column and the page scrolls. A window wide enough puts the
+    source beside the diagram and the log, with the state panes in a row below, and still
+    scrolls. A screen wide and tall enough is the monitor: three columns that fill the glass,
+    each pane scrolling inside itself.
+*/
+@media (min-width: 900px) {
     .desk {
-        height: 100%;
-        grid-template-columns: minmax(40ch, 34%) minmax(0, 1fr);
-        grid-template-rows: auto minmax(0, 1.7fr) minmax(0, 1fr) auto;
+        grid-template-columns: minmax(40ch, 36%) minmax(0, 1fr);
         grid-template-areas:
             "status status"
             "source pipeline"
             "source log"
-            "keys   keys";
+            "keys   keys"
+            "side   side";
+    }
+
+    .side {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+}
+
+@media (min-width: 1200px) and (min-height: 600px) {
+    .glass:has(> .desk) {
+        overflow: hidden;
+    }
+
+    /* The last column is as wide as two columns of registers, and a word of memory fits it too. */
+    .desk {
+        height: 100%;
+        grid-template-columns: minmax(38ch, 27%) minmax(0, 1fr) 33ch;
+        grid-template-rows: auto minmax(0, 1.7fr) minmax(0, 1fr) auto;
+        grid-template-areas:
+            "status status   status"
+            "source pipeline side"
+            "source log      side"
+            "keys   keys     keys";
+    }
+
+    /* The registers take what they need, and give some back to scrolling before the pane under them goes short. */
+    .side {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, auto) minmax(7lh, 1fr);
     }
 }
 
@@ -304,7 +343,7 @@ body {
     scrollbar-width: thin;
 }
 
-@media (min-width: 900px) and (min-height: 560px) {
+@media (min-width: 1200px) and (min-height: 600px) {
     .staircase {
         max-height: none;
     }
@@ -350,6 +389,118 @@ body {
     color: var(--bright);
 }
 
+/* ---- Registers, memory, console, counters ----------------------------------------------------------- */
+
+/*
+    The registers run down their columns, so that neighbours in the register file stay
+    neighbours: two columns of sixteen where the pane is tall, four of eight where it is wide.
+*/
+.register-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(16, auto);
+    gap: 0 3ch;
+    justify-content: start;
+    margin: 0;
+}
+
+@media (min-width: 900px) {
+    .register-grid {
+        grid-template-rows: repeat(8, auto);
+    }
+}
+
+@media (min-width: 1200px) and (min-height: 600px) {
+    .register-grid {
+        grid-template-rows: repeat(16, auto);
+    }
+}
+
+.register {
+    display: flex;
+    gap: 1ch;
+}
+
+.register dt {
+    width: 4ch;
+    color: var(--dim);
+    text-align: right;
+}
+
+.register dd,
+.counter dd {
+    margin: 0;
+}
+
+/* A pane that holds several things is titled with all their names; the one showing is lit. */
+.tabs {
+    display: flex;
+    gap: 1ch;
+}
+
+.tab {
+    padding: 0 0.5ch;
+    border: 0;
+    background: none;
+    color: var(--dim);
+    font: inherit;
+    text-shadow: inherit;
+    cursor: pointer;
+}
+
+.tab:hover {
+    color: var(--bright);
+}
+
+.tab.inverse {
+    background: var(--ink);
+    color: var(--unlit);
+}
+
+.state {
+    min-height: 8lh;
+}
+
+.state-empty {
+    margin: 0;
+}
+
+.regions {
+    display: flex;
+    gap: 1ch;
+    margin-bottom: 0.3lh;
+}
+
+.dump,
+.console {
+    white-space: pre;
+}
+
+.console {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* A counter is a name and a number, the number at the right; a part of one is set in a little. */
+.counters {
+    margin: 0;
+    max-width: 30ch;
+}
+
+.counter {
+    display: flex;
+    justify-content: space-between;
+    gap: 2ch;
+}
+
+.counter dt {
+    color: var(--dim);
+}
+
+.counter.part dt {
+    padding-left: 2ch;
+}
+
 /* ---- The hazard log -------------------------------------------------------------------------------- */
 
 .log {
@@ -361,7 +512,7 @@ body {
     max-height: 12lh;
 }
 
-@media (min-width: 900px) and (min-height: 560px) {
+@media (min-width: 1200px) and (min-height: 600px) {
     .log .pane-body {
         max-height: none;
     }
@@ -434,7 +585,7 @@ body {
     scrollbar-width: thin;
 }
 
-@media (min-width: 900px) and (min-height: 560px) {
+@media (min-width: 1200px) and (min-height: 600px) {
     .editor {
         max-height: none;
     }

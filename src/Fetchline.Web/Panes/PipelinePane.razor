@@ -10,8 +10,8 @@
     StaircaseGrid, which is also what the terminal prints. This component finds out how many
     characters wide it is, asks for the cycles that fit, and decides how each kind of cell is lit.
 *@
-<section class="pane pipeline" aria-label="Pipeline">
-    <h2 class="pane-title">PIPELINE</h2>
+<section class="pane pipeline" aria-label="@Messages.PipelineTitle">
+    <h2 class="pane-title">@Messages.PipelineTitle</h2>
     <div class="staircase" @ref="_scroller" tabindex="0" style="--stair-cell: @(_grid?.CellWidth ?? 5)ch">
         @if (_grid is null)
         {
@@ -39,7 +39,7 @@
             }
             @if (_grid.Arrows.Count > 0)
             {
-                <span><span class="wire">─┐└</span> @Messages.ForwardedLegend</span>
+                <span>EX<span class="wire">──┐</span> @Messages.ForwardedLegend</span>
             }
         </p>
     }

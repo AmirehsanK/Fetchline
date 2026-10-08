@@ -6,8 +6,8 @@
     shows the cycle it happened in, on every pane. Lines for cycles after the one on screen are
     still listed, dimmer, so that the way forward is here too after the run has been stepped back.
 *@
-<section class="pane log" aria-label="What happened">
-    <h2 class="pane-title">LOG</h2>
+<section class="pane log" aria-label="@Messages.LogTitle">
+    <h2 class="pane-title">@Messages.LogTitle</h2>
     <div class="pane-body" @ref="_scroller">
         @if (_lines.Count == 0)
         {
