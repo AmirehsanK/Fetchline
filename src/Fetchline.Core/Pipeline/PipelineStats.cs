@@ -64,12 +64,21 @@ public sealed class PipelineStats
 
     public int ForwardsFrom(ForwardSource source) => _forwards[(int)source];
 
-    public void Add(CycleRecord record)
+    public void Add(CycleRecord record) => Count(record, 1);
+
+    /// <summary>
+    /// Takes a cycle's record back out, leaving the counters as they were before it was added.
+    /// Stepping a run backwards is this, one cycle at a time.
+    /// </summary>
+    public void Remove(CycleRecord record) => Count(record, -1);
+
+    /// <param name="one">Plus one to add the record, minus one to take it out.</param>
+    private void Count(CycleRecord record, int one)
     {
-        Cycles++;
+        Cycles = one > 0 ? Cycles + 1 : Cycles - 1;
         if (record.Commit is { Trapped: false, Stop: not StopReason.Fault })
         {
-            Instructions++;
+            Instructions = one > 0 ? Instructions + 1 : Instructions - 1;
         }
 
         FlushCause? flushed = null;
@@ -78,28 +87,28 @@ public sealed class PipelineStats
             switch (item)
             {
                 case StallEvent stall:
-                    _stalls[(int)stall.Cause]++;
+                    _stalls[(int)stall.Cause] += one;
                     break;
                 case ForwardEvent forward:
-                    _forwards[(int)forward.From]++;
+                    _forwards[(int)forward.From] += one;
                     break;
                 case FlushEvent flush:
-                    Squashed++;
+                    Squashed += one;
                     flushed = flush.Cause;
                     break;
                 case BranchEvent branch:
-                    Branches++;
-                    BranchesTaken += branch.Taken ? 1 : 0;
-                    Mispredictions += branch.Mispredicted ? 1 : 0;
+                    Branches += one;
+                    BranchesTaken += branch.Taken ? one : 0;
+                    Mispredictions += branch.Mispredicted ? one : 0;
                     break;
                 case MemReadEvent:
-                    Loads++;
+                    Loads += one;
                     break;
                 case MemWriteEvent:
-                    Stores++;
+                    Stores += one;
                     break;
                 case TrapEvent:
-                    Traps++;
+                    Traps += one;
                     break;
             }
         }
@@ -107,7 +116,7 @@ public sealed class PipelineStats
         // One redirect squashes up to three instructions; it is still one flush.
         if (flushed is { } cause)
         {
-            _flushes[(int)cause]++;
+            _flushes[(int)cause] += one;
         }
     }
 }

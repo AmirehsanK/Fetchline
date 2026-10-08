@@ -232,6 +232,13 @@ $ fetchline trace examples/load-use.s
 
 One page, state in the URL fragment.
 
+Behind the page is a `Session` in `Fetchline.Viz` with no user interface in it: a source text,
+the program it assembles to, and a run that can be stepped forwards and backwards. The registers,
+memory and console it shows are folded up from the cycle records and from nothing else, so they
+can be tested against the machine's own, and a step back is one record's changes taken out
+again. It keeps the latest 20,000 cycles of records; a cycle older than that is reached by
+running again from reset, which gives the same run because the machine has no other inputs.
+
 - **Editor:** a textarea with a highlighted layer behind it. The highlighter is the assembler's
   own lexer and the squiggles are its own diagnostics. The gutter shows addresses and which stage
   each line is in. No editor library.
@@ -244,7 +251,8 @@ One page, state in the URL fragment.
 - **State:** registers with ABI names, memory, console, and counters (cycles, CPI, stalls and
   flushes by cause, forwards by path, prediction accuracy).
 - **Controls:** assemble, step, step back, run with a speed slider, and a timeline to scrub. Step
-  back and scrub are replays from reset. Long runs execute in slices so the page stays responsive.
+  back and scrub move within the records the session holds, and replay from reset only for a
+  cycle older than those. Long runs execute in slices so the page stays responsive.
 - **Compare:** the current program under every configuration, as a table of cycles and CPI.
 - **Share and export:** a link holds the source, configuration and cycle (deflate, base64url, size
   capped and validated before use). The staircase exports as SVG or PNG, the trace as JSON or
@@ -389,7 +397,7 @@ every correct configuration, and "off" reports its first wrong value.
 when, in the browser, you can type a load and its use, step, and read the stall explained; the
 download size is measured and written down.
 
-- [ ] 7.1 The session: assemble, step, step back, run and reset, with no user interface in it
+- [x] 7.1 The session: assemble, step, step back, run and reset, with no user interface in it
 - [ ] 7.2 The Blazor WebAssembly project and the display: bezel, phosphor, the plain switch
 - [ ] 7.3 The editor: the assembler's own lexer for highlighting, its diagnostics, the gutter
 - [ ] 7.4 The staircase as a character grid, with held and squashed marks and forwarding arrows

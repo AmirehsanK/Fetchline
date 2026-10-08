@@ -230,6 +230,12 @@ How it was checked:
 - **The textbook diagrams.** The load-use sequence, the forwarding sequence and a taken branch
   give the diagrams the textbooks draw; they are pinned as golden files under `tests/golden`,
   and the load-use one is the diagram in the specification, character for character.
+- **The records are complete.** The playground's session never looks inside the machine: it
+  folds its registers, memory and console out of the records alone. A second machine runs beside
+  it and is looked inside, and the two agree after every cycle, on the examples and on 120 random
+  programs spread over every combination of hazard handling, branch decision and predictor,
+  "off" included. Stepping back takes a record's changes out again; every cycle of a run shows
+  the same thing whether it is reached forwards, backwards or by jumping straight to it.
 - **Determinism.** A run can be hashed field by field with FNV-1a. The same program gives the
   same number every time, and the number for `examples/load-use.s` is pinned. Replaying a program
   to a cycle gives the state, the events and the commit that were there the first time, which is

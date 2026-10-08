@@ -59,8 +59,12 @@ public sealed class PipelineMachine
     /// <summary>The registers, memory and surroundings. Its program counter is not the pipeline's.</summary>
     public Hart Hart { get; }
 
-    /// <summary>How many cycles have been run.</summary>
-    public ulong Cycles => Hart.Cycle;
+    /// <summary>
+    /// How many cycles have been run. This is the machine's own clock and numbers the records.
+    /// The cycle counter a program reads is a CSR, which a program can also write; the two start
+    /// together and part company when it does.
+    /// </summary>
+    public ulong Cycles { get; private set; }
 
     /// <summary>
     /// Whether each cycle's record lists its events. Turning it off makes a long run cheaper when
@@ -411,11 +415,12 @@ public sealed class PipelineMachine
         }
 
         hart.Cycle++;
+        Cycles++;
         var events = _events;
         _events = null;
         return new CycleRecord
         {
-            Cycle = hart.Cycle,
+            Cycle = Cycles,
             Fetch = fetchView,
             Decode = decodeView,
             Execute = executeView,

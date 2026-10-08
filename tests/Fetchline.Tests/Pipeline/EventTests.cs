@@ -202,6 +202,56 @@ public class EventTests
     }
 
     [Fact]
+    public void AProgramThatWritesItsCycleCounterDoesNotRenumberTheRecords()
+    {
+        // The counter a program reads is a CSR, and a program may write it. The records are
+        // numbered by the clock itself, so a diagram of this run has no gap in it.
+        var run = RunToEnd("li t0, 1000\ncsrw mcycle, t0\nnop\nnop\nrdcycle a0\nnop");
+
+        Assert.Equal(Enumerable.Range(1, run.Cycles).Select(cycle => (ulong)cycle), run.Records.Select(record => record.Cycle));
+        Assert.Equal((ulong)run.Cycles, run.Machine.Cycles);
+
+        Assert.InRange(run["a0"], 1000u, 1020u);
+        Assert.True(run.Machine.Hart.Cycle > 1000);
+    }
+
+    [Fact]
+    public void TakingARecordBackOutOfTheCountersUndoesAddingIt()
+    {
+        // Stepping a run backwards takes records out one at a time; whatever was added must come
+        // out again exactly. The run has a bit of everything in it.
+        var program = AssemblerTesting.Assemble(File.ReadAllText(Repo.PathOf("examples", "factorial.s")));
+        var machine = new PipelineMachine(program);
+        var records = new List<CycleRecord>();
+        while (!machine.IsFinished)
+        {
+            records.Add(machine.Step());
+        }
+
+        static string Shape(PipelineStats s) => string.Join(
+            ' ',
+            s.Cycles, s.Instructions, s.Squashed, s.Branches, s.BranchesTaken, s.Mispredictions, s.Loads, s.Stores, s.Traps,
+            string.Join(',', Enum.GetValues<StallCause>().Select(s.StallsBy)),
+            string.Join(',', Enum.GetValues<FlushCause>().Select(s.FlushesBy)),
+            string.Join(',', Enum.GetValues<ForwardSource>().Select(s.ForwardsFrom)));
+
+        var all = PipelineStats.Of(records);
+        foreach (var keep in new[] { 0, 1, 57, 120, records.Count })
+        {
+            var stats = PipelineStats.Of(records);
+            for (var i = records.Count - 1; i >= keep; i--)
+            {
+                stats.Remove(records[i]);
+            }
+
+            Assert.Equal(Shape(PipelineStats.Of(records.Take(keep))), Shape(stats));
+        }
+
+        Assert.Equal("0 0 0 0 0 0 0 0 0 0,0,0,0 0,0,0,0 0,0", Shape(new PipelineStats()));
+        Assert.True(all.Stalls > 0 && all.Flushes > 0 && all.Forwards > 0 && all.Loads > 0 && all.Stores > 0);
+    }
+
+    [Fact]
     public void WithRecordingOffTheMachineComputesTheSameAndSaysNothing()
     {
         var program = AssemblerTesting.Assemble(File.ReadAllText(Repo.PathOf("examples", "bubble-sort.s")));
