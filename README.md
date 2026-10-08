@@ -21,7 +21,8 @@ dotnet test
 ## Try it
 
 What works so far is the assembler, the disassembler and the reference machine, which runs one
-instruction at a time. The pipeline is next.
+instruction at a time and passes the official RISC-V tests (64 of 66; the other two need
+features a machine-mode core does not have). The pipeline is next.
 
 ```bash
 dotnet run --project src/Fetchline.Cli -- run examples/fib.s

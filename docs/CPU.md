@@ -127,9 +127,51 @@ How it was checked:
 - **Programs.** Each example in `examples/` has its expected output in a test, and a new example
   fails that test until it says what it prints.
 
-The official `riscv-tests` come with M4, once CSRs and traps exist.
+## 5. CSRs and traps
 
-## 5. Measurements
+The hart has machine mode and nothing else. Its CSR file holds `mstatus` (the interrupt enable and
+its saved copy; the previous-privilege field can only read as machine), `misa`, `mie`, `mip`,
+`mtvec` (direct mode), `mscratch`, `mepc`, `mcause`, `mtval`, the identification registers, and
+two 64-bit counters under their machine and unprivileged names.
+
+**A register that is not there does not exist**, and touching it is an illegal instruction. This
+is load-bearing. The official tests' start-up code writes `satp`, `pmpaddr0`, `medeleg` and
+others, each time after pointing `mtvec` at the next label, precisely so that a core without the
+feature traps and carries on. A core that quietly accepted those writes would be claiming
+features it lacks.
+
+On bare metal an exception is delivered: `mepc`, `mcause` and `mtval` are written, the interrupt
+enable is saved and cleared, and control goes to `mtvec`. `mret` undoes it. `ecall` and `ebreak`
+trap. In the host environment there is no handler to go to, so the same exception stops the
+program with a sentence instead.
+
+Three details the tests insist on:
+
+- A CSR set or clear instruction whose operand field is zero writes nothing. That is what makes
+  `csrr a0, mhartid` legal although `mhartid` is read-only.
+- An instruction that writes `minstret` sets the value the next instruction reads, so it does not
+  also count itself. A trapping instruction does not complete and is not counted.
+- A misaligned load or store succeeds (`rv32ui-p-ma_data` requires it), while a jump to an address
+  that is not a multiple of four traps on the jump.
+
+How it was checked:
+
+- **The official tests.** `riscv-software-src/riscv-tests`, built with GCC 13.2 on a GitHub
+  runner from a pinned commit (`tests/vectors/PROVENANCE.md`). On the reference machine all 42
+  `rv32ui` tests, all 8 `rv32um` tests and 14 of the 16 `rv32mi` tests pass. The two that do not
+  each need something this core does not have: `rv32mi-p-breakpoint` needs the debug trigger
+  registers, and `rv32mi-p-pmpaddr` needs physical memory protection. They are listed with those
+  reasons in `tests/conformance-exclusions.txt`. An excluded test is still run, and if it ever
+  passes that is reported as a failure, so the list cannot go stale.
+- **GNU objdump's reading of the same programs.** The listings objdump printed for the test
+  programs hold 19,217 instructions. For each word this core must name the same instruction with
+  the same operands, and its own text for the word must assemble back to it. Every instruction in
+  the table appears in those listings at least once.
+- **Traps by hand.** Small bare-metal programs check each cause, what lands in `mepc` and `mtval`,
+  that the instruction that trapped wrote nothing, and that code which rewrites itself is decoded
+  again.
+
+## 6. Measurements
 
 Taken with `dotnet run -c Release --project bench/Fetchline.Benchmarks -- --filter '*'` on
 8 October 2026: BenchmarkDotNet 0.15.8, default job, .NET 10.0.11, Intel Core i7-9700K at 3.6 GHz,
