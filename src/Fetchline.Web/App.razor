@@ -1,6 +1,8 @@
 @using Fetchline.Core.Isa
+@using Fetchline.Core.Trace
 @using Fetchline.Viz.Editor
 @using Fetchline.Viz.Explain
+@inject IJSRuntime Js
 
 @*
     What the tube shows: a status line, the panes, and a row of soft keys. All of it is drawn
@@ -10,7 +12,7 @@
     <header class="status">
         <span class="inverse">&nbsp;FETCHLINE&nbsp;</span>
         <span>@SwitchNames.Of(_session.Config)</span>
-        <span class="status-end">@Standing</span>
+        <span class="status-end" role="status">@Standing.Of(_session, Going, Messages)</span>
     </header>
 
     <SourcePane View="_source" Record="_session.Record" Messages="Messages" OnEdit="Edit" />
@@ -24,53 +26,166 @@
         <StatePane Session="_session" Messages="Messages" />
     </div>
 
-    <footer class="softkeys" role="toolbar" aria-label="Run">
-        <button type="button" class="softkey" disabled="@(!_session.CanStep)" @onclick="Run">
-            <span class="softkey-name inverse">RUN</span>
+    <footer class="softkeys" role="toolbar" aria-label="@Messages.Controls">
+        <button type="button" class="softkey" aria-keyshortcuts="F5" disabled="@(!Going && !_session.CanStep)" @onclick="RunOrPause">
+            <span class="softkey-fn">F5</span><span class="softkey-name inverse">@(Going ? Messages.PauseKey : Messages.RunKey)</span>
         </button>
-        <button type="button" class="softkey" disabled="@(!_session.CanStep)" @onclick="Step">
-            <span class="softkey-name inverse">STEP</span>
+        <button type="button" class="softkey" aria-keyshortcuts="F10" disabled="@(!_session.CanStep)" @onclick="Step">
+            <span class="softkey-fn">F10</span><span class="softkey-name inverse">@Messages.StepKey</span>
         </button>
-        <button type="button" class="softkey" disabled="@(!_session.CanStepBack)" @onclick="Back">
-            <span class="softkey-name inverse">BACK</span>
+        <button type="button" class="softkey" aria-keyshortcuts="F9" disabled="@(!_session.CanStepBack)" @onclick="Back">
+            <span class="softkey-fn">F9</span><span class="softkey-name inverse">@Messages.BackKey</span>
         </button>
-        <button type="button" class="softkey" disabled="@(!_session.CanStepBack)" @onclick="Reset">
-            <span class="softkey-name inverse">RESET</span>
+        <button type="button" class="softkey" aria-keyshortcuts="F8" disabled="@(!_session.CanStepBack)" @onclick="Reset">
+            <span class="softkey-fn">F8</span><span class="softkey-name inverse">@Messages.ResetKey</span>
+        </button>
+        <button type="button" class="softkey" aria-keyshortcuts="F6" @onclick="Faster">
+            <span class="softkey-fn">F6</span><span class="softkey-name inverse">@Messages.SpeedKey(_pace.Name)</span>
         </button>
     </footer>
 </div>
 
 @code {
-    // A run with no end is stopped after this many cycles; RUN again carries on.
-    private const int MostCyclesAtOnce = 200_000;
-
     private static readonly IMessages Messages = EnglishMessages.Instance;
 
     private Session _session = default!;
     private SourceView _source = default!;
     private InstructionLabels? _labels;
 
+    private RunPace _pace = RunPace.Default;
+
+    // Set while the run is going on its own; cancelling it is how the run is paused.
+    private CancellationTokenSource? _going;
+    private DotNetObjectReference<App>? _self;
+
+    private bool Going => _going is not null;
+
     protected override void OnInitialized() => Edit(Examples.Read("load-use.s"));
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _self = DotNetObjectReference.Create(this);
+            await Js.InvokeVoidAsync("fetchlineKeys.listen", _self);
+        }
+    }
+
+    /// <summary>Called by the page when one of the function keys on the soft keys is pressed.</summary>
+    [JSInvokable]
+    public void Pressed(string key)
+    {
+        switch (key)
+        {
+            case "F5":
+                RunOrPause();
+                break;
+            case "F6":
+                Faster();
+                break;
+            case "F8":
+                Reset();
+                break;
+            case "F9":
+                Back();
+                break;
+            case "F10":
+                Step();
+                break;
+        }
+
+        StateHasChanged();
+    }
+
+    // Every keystroke in the editor is a new program, and so a new run from reset.
     private void Edit(string text)
     {
+        Halt();
         _session = new Session(text, _session?.Config);
         _source = SourceView.Of(_session.Assembly);
         _labels = _session.Program is { } program ? new InstructionLabels(program) : null;
     }
 
-    private void Run() => _session.Run(MostCyclesAtOnce);
+    private void RunOrPause()
+    {
+        if (Going)
+        {
+            Halt();
+        }
+        else if (_session.CanStep)
+        {
+            _ = Go();
+        }
+    }
 
-    private void Step() => _session.Step();
+    /// <summary>
+    /// Lets the run go on its own: some cycles, a pause in which the page is drawn and the keys
+    /// are heard, and again, until it ends, pauses at an ebreak, or is told to stop.
+    /// </summary>
+    private async Task Go()
+    {
+        var going = _going = new CancellationTokenSource();
+        try
+        {
+            while (!going.IsCancellationRequested && _session.CanStep)
+            {
+                var pace = _pace;
+                var ran = _session.Run(pace.Cycles);
+                if (ran == 0 || _session.Stopped == StopReason.Breakpoint)
+                {
+                    break;
+                }
 
-    private void Back() => _session.StepBack();
+                StateHasChanged();
+                await Task.Delay(pace.Milliseconds, going.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Paused.
+        }
+        finally
+        {
+            if (ReferenceEquals(_going, going))
+            {
+                _going = null;
+            }
 
-    private void Reset() => _session.Reset();
+            going.Dispose();
+            StateHasChanged();
+        }
+    }
 
-    private void Seek(ulong cycle) => _session.Seek(cycle);
+    private void Halt()
+    {
+        _going?.Cancel();
+        _going = null;
+    }
 
-    private string Standing =>
-        _session.Program is null ? "NOTHING TO RUN"
-        : _session.IsFinished ? $"CYCLE {_session.Cycle}  ENDED"
-        : $"CYCLE {_session.Cycle}";
+    // Any other key takes the run out of its own hands first.
+    private void Step()
+    {
+        Halt();
+        _session.Step();
+    }
+
+    private void Back()
+    {
+        Halt();
+        _session.StepBack();
+    }
+
+    private void Reset()
+    {
+        Halt();
+        _session.Reset();
+    }
+
+    private void Seek(ulong cycle)
+    {
+        Halt();
+        _session.Seek(cycle);
+    }
+
+    private void Faster() => _pace = _pace.Next();
 }

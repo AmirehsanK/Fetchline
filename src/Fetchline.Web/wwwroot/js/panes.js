@@ -8,6 +8,26 @@ window.fetchlineEditor = {
     },
 };
 
+window.fetchlineKeys = {
+    // The function keys named on the soft keys are real keys. They are taken only when pressed
+    // alone, so Ctrl+F5 still reloads the page; and only stepping repeats when a key is held.
+    listen: function (listener) {
+        var repeats = { F9: true, F10: true };
+        var keys = { F5: true, F6: true, F8: true, F9: true, F10: true };
+
+        window.addEventListener('keydown', function (event) {
+            if (!keys[event.key] || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
+                return;
+            }
+
+            event.preventDefault();
+            if (!event.repeat || repeats[event.key]) {
+                listener.invokeMethodAsync('Pressed', event.key);
+            }
+        });
+    },
+};
+
 window.fetchlineLog = {
     // Keeps the lines of the cycle on screen in view: the last of them, or failing that the
     // last line before them. Only the log itself is scrolled, never the page around it.

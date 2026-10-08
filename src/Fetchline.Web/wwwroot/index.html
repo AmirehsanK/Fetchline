@@ -20,9 +20,17 @@
     <div class="monitor">
         <main class="tube">
             <div class="glass" id="app">
-                <pre class="boot" role="status">FETCHLINE RV32IM
+                <!--
+                    The start-up screen is the loader: the bar is the engine arriving, and all
+                    of this is replaced by the application the moment it has.
+                -->
+                <div class="boot" role="status">
+                    <pre>FETCHLINE RV32IM
+FIVE-STAGE PIPELINE ANALYZER
 
-LOADING THE ENGINE <span class="boot-progress"></span></pre>
+LOADING THE ENGINE <span class="boot-progress"></span><span class="boot-cursor"></span></pre>
+                    <div class="boot-bar"><span></span></div>
+                </div>
             </div>
             <div class="fault" id="blazor-error-ui" role="alert">
                 THE PAGE HIT AN ERROR IT COULD NOT RECOVER FROM.

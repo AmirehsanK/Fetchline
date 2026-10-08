@@ -100,6 +100,49 @@ public interface IMessages
     /// <summary>Under the problems that are listed, how many more there are.</summary>
     string MoreProblems(int count);
 
+    /// <summary>The names on the soft keys.</summary>
+    string RunKey { get; }
+
+    string PauseKey { get; }
+
+    string StepKey { get; }
+
+    string BackKey { get; }
+
+    string ResetKey { get; }
+
+    /// <summary>The speed key: its name with the pace it is set to, or with the word for flat out.</summary>
+    string SpeedKey(string pace);
+
+    /// <summary>What the soft keys are, for a reader who cannot see them as a row.</summary>
+    string Controls { get; }
+
+    /// <summary>On the status line: the cycle on screen.</summary>
+    string StatusCycle(ulong cycle);
+
+    /// <summary>On the status line, before the first cycle.</summary>
+    string StatusReady { get; }
+
+    string StatusRunning { get; }
+
+    /// <summary>On the status line when the run has reached the end of its code.</summary>
+    string StatusEnded { get; }
+
+    /// <summary>On the status line when the program has left through an exit call.</summary>
+    string StatusExited(int code);
+
+    /// <summary>On the status line at an <c>ebreak</c>, where the run waits to be told to go on.</summary>
+    string StatusPaused { get; }
+
+    /// <summary>On the status line when the machine has stopped the program, and why.</summary>
+    string StatusStopped(string reason);
+
+    /// <summary>On the status line when the source does not assemble.</summary>
+    string StatusNothingToRun { get; }
+
+    /// <summary>On the status line once the pipeline has computed something the reference machine did not.</summary>
+    string StatusWrong(ulong cycle);
+
     /// <summary>What the pipeline pane says before the first cycle has run.</summary>
     string ReadyToRun { get; }
 
@@ -281,6 +324,38 @@ public sealed class EnglishMessages : IMessages
     public string Problem(string message, string? hint) => hint is null ? message : $"{message}; {hint}";
 
     public string MoreProblems(int count) => $"and {Count(count, "more", "more")}";
+
+    public string RunKey => "RUN";
+
+    public string PauseKey => "PAUSE";
+
+    public string StepKey => "STEP";
+
+    public string BackKey => "BACK";
+
+    public string ResetKey => "RESET";
+
+    public string SpeedKey(string pace) => pace.Length == 0 ? "SPEED MAX" : $"SPEED {pace}";
+
+    public string Controls => "Run controls";
+
+    public string StatusCycle(ulong cycle) => string.Create(CultureInfo.InvariantCulture, $"CYCLE {cycle}");
+
+    public string StatusReady => "READY";
+
+    public string StatusRunning => "RUNNING";
+
+    public string StatusEnded => "ENDED";
+
+    public string StatusExited(int code) => string.Create(CultureInfo.InvariantCulture, $"EXIT {code}");
+
+    public string StatusPaused => "PAUSED AT EBREAK";
+
+    public string StatusStopped(string reason) => $"STOPPED: {reason}";
+
+    public string StatusNothingToRun => "NOTHING TO RUN";
+
+    public string StatusWrong(ulong cycle) => string.Create(CultureInfo.InvariantCulture, $"WRONG SINCE CYCLE {cycle}");
 
     public string ReadyToRun => "RV32IM READY\n\nSTEP runs one cycle. RUN goes on to the end.";
 

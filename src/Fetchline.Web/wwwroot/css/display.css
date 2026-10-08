@@ -722,6 +722,12 @@ body {
     cursor: pointer;
 }
 
+/* A soft key is the name of a function key and, lit beside it, what the key does now. */
+.softkey-fn {
+    margin-right: 0.5ch;
+    color: var(--dim);
+}
+
 .softkey-name {
     display: inline-block;
     padding: 0 1ch;
@@ -750,17 +756,33 @@ body {
 
 /* ---- Before the engine has loaded, and if it falls over -------------------------------------- */
 
-.boot {
-    white-space: pre-wrap;
-}
-
-/* The engine reports how much of itself has arrived; the tube prints it. */
+/*
+    The start-up screen. The engine reports how much of itself has arrived, as a percentage and
+    as the same thing in words; the tube prints the words and fills a bar with the number.
+*/
 .boot-progress::after {
     content: var(--blazor-load-percentage-text, "");
 }
 
-.boot::after {
+.boot-bar {
+    width: min(40ch, 100%);
+    height: 1lh;
+    margin: 0.5lh 0 1lh;
+    border: 1px solid var(--dim);
+}
+
+.boot-bar span {
+    display: block;
+    width: var(--blazor-load-percentage, 0%);
+    height: 100%;
+    background: var(--ink);
+    box-shadow: 0 0 var(--glow) rgb(var(--halo) / 0.4);
+}
+
+/* The line waits, its cursor blinking, for the engine to take the screen over. */
+.boot-cursor::after {
     content: "\2588";
+    margin-left: 1ch;
     animation: blink 1.06s steps(1, end) infinite;
 }
 

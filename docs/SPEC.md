@@ -269,9 +269,16 @@ running again from reset, which gives the same run because the machine has no ot
   scrolls. From 900 pixels wide the source sits beside the diagram and the log, with the state
   panes in a row below. From 1,200 by 600 the monitor fills the window and every pane scrolls
   inside itself: source, then diagram over log, then registers over the shared pane.
-- **Controls:** assemble, step, step back, run with a speed slider, and a timeline to scrub. Step
-  back and scrub move within the records the session holds, and replay from reset only for a
-  cycle older than those. Long runs execute in slices so the page stays responsive.
+- **Controls:** run and pause, step, step back, reset, a speed, and a timeline to scrub. There
+  is no assemble key: every keystroke in the editor assembles the text, and a program that
+  assembles is a new run from reset. The controls are soft keys along the foot of the tube, each
+  named with the function key that also works it: `F5` run or pause, `F10` step, `F9` back, `F8`
+  reset, `F6` speed. A key is taken only when pressed alone, so `Ctrl+F5` still reloads the page.
+  A run goes at one, four or sixteen cycles a second, or flat out in slices of several thousand
+  cycles with a pause between them in which the page is drawn and the keys are heard. Step back
+  and scrub move within the records the session holds, and replay from reset only for a cycle
+  older than those. The status line says how the run stands: ready, at a cycle, running, paused
+  at an `ebreak`, ended, exited with a code, stopped and why, and wrong since which cycle.
 - **Compare:** the current program under every configuration, as a table of cycles and CPI.
 - **Share and export:** a link holds the source, configuration and cycle (deflate, base64url, size
   capped and validated before use). The staircase exports as SVG or PNG, the trace as JSON or
@@ -303,8 +310,10 @@ computer, not as a modern web app.
 - **Panels:** registers, memory and the hazard log look like a machine monitor: hex dumps, a
   status line at the bottom, function-key labels (`F5 RUN`, `F10 STEP`) that are also real
   shortcuts.
-- **Start-up:** a short boot sequence (memory check, "RV32IM READY") that a click or key skips,
-  and that is not shown again in the same visit.
+- **Start-up:** the start-up screen is the loader. While the engine arrives the tube shows the
+  machine's name, how much has arrived as a number and as a bar, and a blinking cursor; the
+  application replaces it the moment the engine starts. Nothing is delayed for effect, so there
+  is nothing to skip, and a later visit with the engine cached hardly sees it.
 - **Rules that keep it usable:** a "plain display" switch turns every effect off;
   `prefers-reduced-motion` turns off flicker and blinking; text contrast stays at WCAG AA on each
   phosphor colour; nothing is conveyed by an effect alone. Persian text uses Sahel or Vazirmatn,
@@ -430,7 +439,7 @@ download size is measured and written down.
 - [x] 7.4 The staircase as a character grid, with held and squashed marks and forwarding arrows
 - [x] 7.5 The hazard log, and jumping to the cycle of a line
 - [x] 7.6 The state panes: registers, memory, console and counters
-- [ ] 7.7 The controls, the function keys and the start-up sequence
+- [x] 7.7 The controls, the function keys and the start-up sequence
 - [ ] 7.8 Checked in a real browser; the download size measured and written down
 
 **M8. Datapath view, configuration, compare table, examples, share links, timeline.** Done when a
