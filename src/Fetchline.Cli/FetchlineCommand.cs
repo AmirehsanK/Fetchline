@@ -24,5 +24,6 @@ internal static class FetchlineCommand
         {
             AsmCommand.Build(),
             DisCommand.Build(),
+            RunCommand.Build(),
         };
 }

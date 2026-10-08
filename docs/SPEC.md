@@ -326,7 +326,7 @@ instruction pass, the example programs print what they should, and a benchmark i
 - [x] 3.2 Control signals and the `Exec` functions
 - [x] 3.3 The reference machine and its commit records
 - [x] 3.4 The host environment: system calls, pause, clean end, readable faults
-- [ ] 3.5 `fetchline run` and the example programs
+- [x] 3.5 `fetchline run` and the example programs
 - [ ] 3.6 The benchmark project, and its first numbers in `docs/CPU.md`
 
 **M4. CSRs, traps, `tohost`; the official tests.** Done when 42 `rv32ui` and 8 `rv32um` tests

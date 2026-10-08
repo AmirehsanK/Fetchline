@@ -20,7 +20,16 @@ dotnet test
 
 ## Try it
 
-What works so far is the assembler and the disassembler:
+What works so far is the assembler, the disassembler and the reference machine, which runs one
+instruction at a time. The pipeline is next.
+
+```bash
+dotnet run --project src/Fetchline.Cli -- run examples/fib.s
+```
+
+```
+0 1 1 2 3 5 8 13 21 34
+```
 
 ```bash
 dotnet run --project src/Fetchline.Cli -- asm examples/sum.s --listing
@@ -39,14 +48,21 @@ dotnet run --project src/Fetchline.Cli -- asm examples/sum.s --listing
 ...
 ```
 
-`asm -o program.elf` writes an ELF executable, and `dis` reads one back. A mistake in the source
-is reported with its line, a caret, and a suggestion when there is one:
+`asm -o program.elf` writes an ELF executable, and `dis` and `run` read one back. A mistake in the
+source is reported with its line, a caret, and a suggestion when there is one:
 
 ```
 prog.s:2:5: error: unknown instruction 'adid'
       adid a0, a0, 1
       ^~~~
   did you mean 'addi'?
+```
+
+A program that does something it cannot do is stopped with a sentence, not a wrong answer:
+
+```
+fetchline: the program stopped: a store to 0x00000000, which is in 'text' and cannot be written, at pc 0x00000004
+  prog.s:3: sw   a0, 0(zero)
 ```
 
 ## Licence
