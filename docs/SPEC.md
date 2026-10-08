@@ -322,7 +322,7 @@ instruction pass, the example programs print what they should, and a benchmark i
 `docs/CPU.md`.
 
 - [x] 3.1 Memory: sparse pages and mapped regions
-- [ ] 3.2 Control signals and the `Exec` functions
+- [x] 3.2 Control signals and the `Exec` functions
 - [ ] 3.3 The reference machine and its commit records
 - [ ] 3.4 The host environment: system calls, pause, clean end, readable faults
 - [ ] 3.5 `fetchline run` and the example programs
