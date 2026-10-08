@@ -279,6 +279,9 @@ running again from reset, which gives the same run because the machine has no ot
   and scrub move within the records the session holds, and replay from reset only for a cycle
   older than those. The status line says how the run stands: ready, at a cycle, running, paused
   at an `ebreak`, ended, exited with a code, stopped and why, and wrong since which cycle.
+- **Timeline:** under the switches, the run so far as a line lit up to the cycle on screen,
+  with a block for a handle. It is a range input in the tube's clothes, so a finger, a mouse and
+  the arrow keys all move it; moving it shows that cycle on every pane.
 - **Switches:** the what-if switches of section 7 are a row under the status line, each a name
   and its positions with the one chosen lit, named as the command line names them. Moving one
   builds the pipeline that way and starts the run again. What can be switched to is exactly
@@ -465,7 +468,7 @@ link opened in a fresh profile shows the same cycle and the same numbers.
 - [x] 8.4 The compare table
 - [x] 8.5 The examples menu
 - [ ] 8.6 The share codec, held to malformed and oversized input, and links that use it
-- [ ] 8.7 The timeline, and long runs in slices
+- [x] 8.7 The timeline, and long runs in slices
 - [ ] 8.8 Checked in a real browser: a link in a fresh profile shows the same cycle and numbers
 
 **M9. README with real screenshots, `docs/CPU.md`, Pages workflow, exports, Persian.** Done when

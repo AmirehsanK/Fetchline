@@ -219,7 +219,7 @@ body {
 .desk {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "status" "switches" "source" "keys" "pipeline" "log" "side";
+    grid-template-areas: "status" "switches" "timeline" "source" "keys" "pipeline" "log" "side";
     gap: 0.9lh 2ch;
 }
 
@@ -254,6 +254,56 @@ body {
     color: var(--dim);
 }
 
+/*
+    The timeline: the run so far as a line, lit up to the cycle on screen, with a block for a
+    handle. It is a range input, so a finger, a mouse and the arrow keys all work it; only its
+    looks are the tube's.
+*/
+.timeline {
+    grid-area: timeline;
+    display: flex;
+    align-items: center;
+    gap: 2ch;
+}
+
+.timeline input {
+    flex: 1;
+    min-width: 0;
+    height: 1lh;
+    margin: 0;
+    appearance: none;
+    background: linear-gradient(to right, var(--ink) var(--at, 0%), var(--dim) var(--at, 0%)) center / 100% 2px no-repeat;
+    cursor: pointer;
+}
+
+.timeline input:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
+.timeline input::-webkit-slider-thumb {
+    appearance: none;
+    width: 1ch;
+    height: 1lh;
+    border: 0;
+    border-radius: 0;
+    background: var(--bright);
+    box-shadow: 0 0 var(--glow) rgb(var(--halo) / 0.5);
+}
+
+.timeline input::-moz-range-thumb {
+    width: 1ch;
+    height: 1lh;
+    border: 0;
+    border-radius: 0;
+    background: var(--bright);
+    box-shadow: 0 0 var(--glow) rgb(var(--halo) / 0.5);
+}
+
+.timeline input::-moz-range-track {
+    background: none;
+}
+
 /* The registers, and under or beside them the pane that memory, console and counters share. */
 .side {
     grid-area: side;
@@ -276,6 +326,7 @@ body {
         grid-template-areas:
             "status   status"
             "switches switches"
+            "timeline timeline"
             "source   pipeline"
             "source   log"
             "keys     keys"
@@ -296,10 +347,11 @@ body {
     .desk {
         height: 100%;
         grid-template-columns: minmax(38ch, 27%) minmax(0, 1fr) 33ch;
-        grid-template-rows: auto auto minmax(0, 1.7fr) minmax(0, 1fr) auto;
+        grid-template-rows: auto auto auto minmax(0, 1.7fr) minmax(0, 1fr) auto;
         grid-template-areas:
             "status   status   status"
             "switches switches switches"
+            "timeline timeline timeline"
             "source   pipeline side"
             "source   log      side"
             "keys     keys     keys";

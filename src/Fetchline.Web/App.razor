@@ -16,6 +16,14 @@
 
     <SwitchesBar Config="_session.Config" Messages="Messages" OnChange="Rebuild" />
 
+    @* The timeline: the run so far from end to end, and a handle on the cycle on screen. *@
+    <div class="timeline">
+        <input type="range" min="0" max="@_session.Frontier" step="1" value="@_session.Cycle"
+               style="--at: @(Fraction())%" disabled="@(_session.Frontier == 0)" aria-label="@Messages.Timeline"
+               @oninput="Scrub" />
+        <span class="dim">@Messages.TimelineRun(_session.Frontier)</span>
+    </div>
+
     <SourcePane View="_source" Record="_session.Record" Messages="Messages" OnEdit="Edit" />
 
     @if (_compare is not null && _session.Program is { } compared)
@@ -265,4 +273,18 @@
     }
 
     private void Faster() => _pace = _pace.Next();
+
+    // The handle of the timeline has been moved to a cycle.
+    private void Scrub(ChangeEventArgs change)
+    {
+        if (ulong.TryParse(change.Value as string, NumberStyles.None, CultureInfo.InvariantCulture, out var cycle))
+        {
+            Seek(cycle);
+        }
+    }
+
+    // How far along the run so far the cycle on screen is, in hundredths: the lit part of the timeline.
+    private string Fraction() => _session.Frontier == 0
+        ? "0"
+        : (100.0 * _session.Cycle / _session.Frontier).ToString("0.##", CultureInfo.InvariantCulture);
 }

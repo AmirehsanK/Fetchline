@@ -131,6 +131,12 @@ public interface IMessages
     /// <summary>Under a finished comparison: what its rows are for.</summary>
     string CompareHint { get; }
 
+    /// <summary>What the timeline is, for a reader who cannot see it: the control that goes to any cycle run so far.</summary>
+    string Timeline { get; }
+
+    /// <summary>At the end of the timeline: how many cycles have been run.</summary>
+    string TimelineRun(ulong cycles);
+
     /// <summary>What the soft keys are, for a reader who cannot see them as a row.</summary>
     string Controls { get; }
 
@@ -375,6 +381,10 @@ public sealed class EnglishMessages : IMessages
         string.Create(CultureInfo.InvariantCulture, $"Running it every way: {done} of {total} done.");
 
     public string CompareHint => "Choose a row to build the pipeline that way.";
+
+    public string Timeline => "Cycle on screen";
+
+    public string TimelineRun(ulong cycles) => Count(cycles, "cycle run", "cycles run");
 
     public string Controls => "Run controls";
 
