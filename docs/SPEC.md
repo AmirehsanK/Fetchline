@@ -301,7 +301,7 @@ round-trips over random fields and every match and mask equals the `riscv-opcode
 - [x] 1.3 The decoder
 - [x] 1.4 The encoder, and round trips on seeded random fields
 - [x] 1.5 CSR names and the disassembler, canonical and alias forms
-- [ ] 1.6 The vectors workflow, and the cross-check against `riscv-opcodes`
+- [x] 1.6 The vectors workflow, and the cross-check against `riscv-opcodes`
 
 **M2. Assembler, `Program`, ELF32; `fetchline asm` and `dis`.** Done when the examples assemble,
 assembling a disassembled random word gives the word back, and every error has a line and column.
