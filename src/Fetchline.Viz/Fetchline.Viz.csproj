@@ -15,6 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The playground's examples are the files the tests run, not copies of them. -->
+    <EmbeddedResource Include="..\..\examples\*.s" LogicalName="Examples.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Fetchline.Tests" />
   </ItemGroup>
 

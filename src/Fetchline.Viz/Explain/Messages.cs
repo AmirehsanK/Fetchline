@@ -88,6 +88,9 @@ public interface IMessages
 
     string CountersTitle { get; }
 
+    /// <summary>The name of the menu of example programs, which is also what it shows.</summary>
+    string ExamplesMenu { get; }
+
     /// <summary>What the console says while the program has printed nothing.</summary>
     string NothingPrinted { get; }
 
@@ -325,6 +328,8 @@ public sealed class EnglishMessages : IMessages
     public string ConsoleTitle => "CONSOLE";
 
     public string CountersTitle => "COUNTERS";
+
+    public string ExamplesMenu => "EXAMPLES";
 
     public string NothingPrinted => "The program has printed nothing yet.";
 

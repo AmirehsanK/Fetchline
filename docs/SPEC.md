@@ -284,6 +284,10 @@ running again from reset, which gives the same run because the machine has no ot
   builds the pipeline that way and starts the run again. What can be switched to is exactly
   what the tests run everything on: the 64 correct configurations, and the same with hazard
   handling off. The buffer's size is offered only while the predictor is one that has a buffer.
+- **Examples:** a menu in the top edge of the source pane puts an example in the editor. The
+  examples are the files under `examples/`, built into `Fetchline.Viz`, each offered with the
+  first sentence of the comment it opens with, in the order a reader might take them: the four
+  that each show one thing a pipeline does, then whole programs from the shortest to the longest.
 - **Compare:** the current program under every configuration, as a table of cycles and CPI.
 - **Share and export:** a link holds the source, configuration and cycle (deflate, base64url, size
   capped and validated before use). The staircase exports as SVG or PNG, the trace as JSON or
@@ -454,7 +458,7 @@ link opened in a fresh profile shows the same cycle and the same numbers.
 - [ ] 8.2 The datapath as data, and the paths that are active in a cycle
 - [ ] 8.3 The datapath drawn, with values on hover
 - [ ] 8.4 The compare table
-- [ ] 8.5 The examples menu
+- [x] 8.5 The examples menu
 - [ ] 8.6 The share codec, held to malformed and oversized input, and links that use it
 - [ ] 8.7 The timeline, and long runs in slices
 - [ ] 8.8 Checked in a real browser: a link in a fresh profile shows the same cycle and numbers

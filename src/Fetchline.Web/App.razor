@@ -61,7 +61,7 @@
 
     private bool Going => _going is not null;
 
-    protected override void OnInitialized() => Edit(Examples.Read("load-use.s"));
+    protected override void OnInitialized() => Edit(ExampleCatalog.First.Source);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

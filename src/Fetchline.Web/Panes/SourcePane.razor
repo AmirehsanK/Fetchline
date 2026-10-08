@@ -11,6 +11,14 @@
 *@
 <section class="pane source" aria-label="@Messages.SourceTitle">
     <h2 class="pane-title">@Messages.SourceTitle</h2>
+    @* The menu puts an example in the editor and goes back to saying only that it is the menu. *@
+    <select class="examples" @key="_chosen" aria-label="@Messages.ExamplesMenu" @onchange="Chosen">
+        <option value="" selected>@Messages.ExamplesMenu</option>
+        @foreach (var example in ExampleCatalog.All)
+        {
+            <option value="@example.Name">@example.Name: @example.Summary</option>
+        }
+    </select>
     <div class="editor">
         <pre class="gutter" aria-hidden="true">@Gutter</pre>
         <div class="code">
@@ -64,6 +72,21 @@
     public EventCallback<string> OnEdit { get; set; }
 
     private Task Typed(ChangeEventArgs change) => OnEdit.InvokeAsync(change.Value as string ?? string.Empty);
+
+    // How many examples have been chosen. It is the menu's key, so that each choice leaves a
+    // new menu behind it, showing its own name again and not the example's.
+    private int _chosen;
+
+    private Task Chosen(ChangeEventArgs change)
+    {
+        if (ExampleCatalog.Find(change.Value as string ?? string.Empty) is not { } example)
+        {
+            return Task.CompletedTask;
+        }
+
+        _chosen++;
+        return OnEdit.InvokeAsync(example.Source);
+    }
 
     /// <summary>Puts the caret on the text a problem is about.</summary>
     private async Task Show(Diagnostic problem) =>

@@ -591,6 +591,35 @@ body {
     color: var(--dim);
 }
 
+/* The menu of examples is set into the top edge of the source pane, opposite its name. */
+.examples {
+    position: absolute;
+    top: -0.6lh;
+    right: 1.5ch;
+    max-width: 55%;
+    padding: 0 0.5ch;
+    border: 1px solid var(--dim);
+    border-radius: 0;
+    background: var(--unlit);
+    color: var(--ink);
+    font: inherit;
+    text-shadow: inherit;
+    cursor: pointer;
+}
+
+.examples:hover,
+.examples:focus-visible {
+    border-color: var(--ink);
+    color: var(--bright);
+}
+
+/* The list a browser draws for it is the browser's own, but can at least be the tube's colours. */
+.examples option {
+    background: var(--unlit);
+    color: var(--ink);
+    text-shadow: none;
+}
+
 /* ---- The editor --------------------------------------------------------------------------------- */
 
 /* On a small screen the editor is as tall as a short program and scrolls beyond that. */
