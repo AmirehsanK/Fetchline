@@ -291,7 +291,7 @@ ticked in the commit that finishes the section.
 - [x] 0.2 The solution, the engine project, the test project and the purity test
 - [x] 0.3 The command-line project
 - [x] 0.4 This specification and `CLAUDE.md`
-- [ ] 0.5 The CI workflow
+- [x] 0.5 The CI workflow
 
 **M1. Instruction table, decoder, encoder, disassembler.** Done when every instruction
 round-trips over random fields and every match and mask equals the `riscv-opcodes` files.
