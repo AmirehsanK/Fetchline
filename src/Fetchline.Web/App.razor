@@ -1,0 +1,23 @@
+@using Fetchline.Viz.Explain
+@using Fetchline.Viz.Export
+
+@*
+    What the tube shows. For now that is one thing: the textbook load-use sequence, assembled and
+    run by the engine in the browser, and drawn by the same code that draws it in a terminal.
+*@
+<pre class="readout"><span class="bright">RV32IM READY</span>
+
+@_trace</pre>
+
+@code {
+    private const string LoadUse = "lw   x4, 0(x2)\nadd  x5, x4, x6\nsub  x7, x5, x4\n";
+
+    private string _trace = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var session = new Session(LoadUse);
+        session.Seek(ulong.MaxValue);
+        _trace = AsciiTrace.Write(session.Program!, session.Records(1, session.Cycle), EnglishMessages.Instance);
+    }
+}

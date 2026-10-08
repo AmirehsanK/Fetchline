@@ -266,9 +266,14 @@ Asked for by the owner on 8 October 2026. The playground is drawn as the screen 
 computer, not as a modern web app.
 
 - **Frame:** the whole app sits inside a CRT monitor bezel with a slightly curved screen, a power
-  light and a model plate carrying the project name.
+  light and a model plate carrying the project name. The case is the putty plastic of a 1980s
+  terminal, lettered in a DIN-like face, so that it reads as an object and not as a dark page.
+  It is plain HTML, on screen before the engine has loaded; the application is drawn into the
+  tube.
 - **Screen:** one phosphor colour on near-black, with a switch between green (the default), amber
-  and white. Scanlines, a soft glow on text and a faint flicker are CSS only.
+  and white. Scanlines, a soft glow on text and a faint flicker are CSS only. The phosphor and
+  plain switches are keys on the monitor's chin; they work without the engine and are remembered
+  in the browser's local storage.
 - **Type:** a monospace face everywhere on the screen, and a blinking block cursor in the editor.
   A bundled font must have an open licence (VT323 or IBM Plex Mono, both OFL) and needs the
   owner's yes to download; until then Cascadia Mono and Consolas are used.
@@ -287,7 +292,10 @@ computer, not as a modern web app.
   because retro bitmap faces have no Persian glyphs, while code, registers and diagrams keep the
   monospace face.
 - The look is one stylesheet of tokens (colours, glow, scanline strength), so it does not leak
-  into the engine or `Fetchline.Viz`.
+  into the engine or `Fetchline.Viz`. A test reads it and holds it to the rules above: each
+  phosphor's normal, dim and bright text at 4.5 to 1 or better against its unlit glass, every
+  effect off under the plain switch, no animation for a reader who asks for less motion, and
+  nothing fetched from another site.
 
 ## 9. Command line
 
@@ -398,7 +406,7 @@ when, in the browser, you can type a load and its use, step, and read the stall 
 download size is measured and written down.
 
 - [x] 7.1 The session: assemble, step, step back, run and reset, with no user interface in it
-- [ ] 7.2 The Blazor WebAssembly project and the display: bezel, phosphor, the plain switch
+- [x] 7.2 The Blazor WebAssembly project and the display: bezel, phosphor, the plain switch
 - [ ] 7.3 The editor: the assembler's own lexer for highlighting, its diagnostics, the gutter
 - [ ] 7.4 The staircase as a character grid, with held and squashed marks and forwarding arrows
 - [ ] 7.5 The hazard log, and jumping to the cycle of a line

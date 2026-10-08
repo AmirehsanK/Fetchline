@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" data-phosphor="green">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="A RISC-V CPU, an assembler and a five-stage pipeline you can step through, cycle by cycle." />
+    <title>Fetchline</title>
+    <base href="/" />
+    <link rel="stylesheet" href="css/display.css" />
+    <!-- The display's settings are put back before anything is drawn, so the tube never changes colour under the reader. -->
+    <script src="js/display-settings.js"></script>
+</head>
+<body>
+    <!--
+        The monitor is the page: a case, a tube and a chin with the plate and the switches. None
+        of it needs the engine, so it is here in plain HTML and is on screen before the engine
+        has loaded. What the tube shows is the application, drawn into #app.
+    -->
+    <div class="monitor">
+        <main class="tube">
+            <div class="glass" id="app">
+                <pre class="boot" role="status">FETCHLINE RV32IM
+
+LOADING THE ENGINE <span class="boot-progress"></span></pre>
+            </div>
+            <div class="fault" id="blazor-error-ui" role="alert">
+                THE PAGE HIT AN ERROR IT COULD NOT RECOVER FROM.
+                <a href="." class="reload">RELOAD</a>
+            </div>
+        </main>
+
+        <footer class="chin">
+            <span class="lamp" title="Power"></span>
+            <div class="plate">
+                <b>FETCHLINE</b>
+                <span>RV32IM &middot; FIVE-STAGE PIPELINE</span>
+            </div>
+            <div class="switches" role="group" aria-label="Display">
+                <span class="legend">PHOSPHOR</span>
+                <button type="button" class="key" data-phosphor="green" aria-pressed="true">GREEN</button>
+                <button type="button" class="key" data-phosphor="amber" aria-pressed="false">AMBER</button>
+                <button type="button" class="key" data-phosphor="white" aria-pressed="false">WHITE</button>
+                <span class="legend">EFFECTS</span>
+                <button type="button" class="key" data-plain aria-pressed="false" title="Turn off the scanlines, the glow and the flicker">PLAIN</button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/display.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+</html>

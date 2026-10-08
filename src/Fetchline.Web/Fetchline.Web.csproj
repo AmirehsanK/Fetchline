@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!--
+    The playground: the engine and Fetchline.Viz running in the browser. This project draws and
+    listens; what there is to draw is decided in Fetchline.Viz, where it is tested.
+  -->
+  <PropertyGroup>
+    <RootNamespace>Fetchline.Web</RootNamespace>
+    <!-- Nothing is formatted for a culture or a time zone, so neither kind of data is shipped. -->
+    <BlazorEnableTimeZoneSupport>false</BlazorEnableTimeZoneSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fetchline.Core\Fetchline.Core.csproj" />
+    <ProjectReference Include="..\Fetchline.Viz\Fetchline.Viz.csproj" />
+  </ItemGroup>
+
+</Project>
