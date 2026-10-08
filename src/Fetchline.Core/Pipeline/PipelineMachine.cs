@@ -167,31 +167,41 @@ public sealed class PipelineMachine
             var instruction = _idEx.Instruction;
             var control = instruction.Control;
 
-            // The values read in ID may be out of date: an instruction one or two ahead may have
-            // computed a newer one that is not in the register file yet.
-            var rs1 = Forward(Operand.A, instruction.Rs1, control.UsesRs1, _idEx.Rs1);
-            var rs2 = Forward(Operand.B, instruction.Rs2, control.UsesRs2, _idEx.Rs2);
+            // A branch that was decided in ID took its operands there. It has nothing left to
+            // read in EX, so nothing is forwarded to it here.
+            var decided = _idEx.Decided;
+            var (rs1, rs2) = (_idEx.Rs1, _idEx.Rs2);
+            if (!decided)
+            {
+                // The values read in ID may be out of date: an instruction one or two ahead may
+                // have computed a newer one that is not in the register file yet.
+                rs1 = Forward(Operand.A, instruction.Rs1, control.UsesRs1, rs1);
+                rs2 = Forward(Operand.B, instruction.Rs2, control.UsesRs2, rs2);
+            }
 
             var alu = Exec.Alu(
                 control.Alu,
                 Exec.OperandA(control.SrcA, rs1, _idEx.Pc),
                 Exec.OperandB(control.SrcB, rs2, instruction.Imm));
-            var taken = Exec.Taken(control.Branch, rs1, rs2);
-            var target = Exec.Target(control.Branch, _idEx.Pc, instruction.Imm, alu);
+            var taken = decided ? _idEx.Taken : Exec.Taken(control.Branch, rs1, rs2);
+            var target = decided ? _idEx.Target : Exec.Target(control.Branch, _idEx.Pc, instruction.Imm, alu);
 
-            // Fetch has carried on in a straight line behind this instruction. If it goes
-            // somewhere else, the two instructions fetched since are from the wrong path.
-            if (taken)
+            if (!decided)
             {
-                redirect = true;
-                redirectTo = target;
-                redirectBy = _idEx.Seq;
-                flushCause = FlushCause.Branch;
-            }
+                // Fetch has carried on in a straight line behind this instruction. If it goes
+                // somewhere else, the two instructions fetched since are from the wrong path.
+                if (taken)
+                {
+                    redirect = true;
+                    redirectTo = target;
+                    redirectBy = _idEx.Seq;
+                    flushCause = FlushCause.Branch;
+                }
 
-            if (control.IsControlFlow)
-            {
-                _events?.Add(new BranchEvent(_idEx.Seq, taken, target, Mispredicted: taken, Stage.Execute));
+                if (control.IsControlFlow)
+                {
+                    _events?.Add(new BranchEvent(_idEx.Seq, taken, target, Mispredicted: taken, Stage.Execute));
+                }
             }
 
             nextExMem = new ExMem(true, _idEx.Seq, _idEx.Pc, instruction, rs1, rs2, alu, taken, target);
@@ -203,6 +213,8 @@ public sealed class PipelineMachine
         var nextIdEx = default(IdEx);
         var decodeView = default(StageView);
         var stall = false;
+        var decodeRedirect = false;
+        uint decodeTarget = 0;
         if (_ifId.Valid)
         {
             var instruction = Decoder.Decode(_ifId.Raw);
@@ -211,13 +223,37 @@ public sealed class PipelineMachine
             // A dependency counts only if the instruction really reads the register.
             var rs1 = control.UsesRs1 ? instruction.Rs1 : 0;
             var rs2 = control.UsesRs2 ? instruction.Rs2 : 0;
-            if (!redirect && WaitsFor(rs1, rs2) is { } wait)
+            var decidesHere = Config.Branches == BranchDecision.Decode && control.IsControlFlow;
+
+            // An instruction that is about to be thrown away waits for nothing and decides nothing.
+            var wait = redirect ? null : decidesHere ? ComparatorWaitsFor(rs1, rs2) : WaitsFor(rs1, rs2);
+            if (wait is { } waiting)
             {
                 stall = true;
-                _events?.Add(new StallEvent(_ifId.Seq, wait.Cause, Stage.Decode, wait.Register, wait.Producer, wait.ProducerStage));
+                _events?.Add(new StallEvent(
+                    _ifId.Seq, waiting.Cause, Stage.Decode, waiting.Register, waiting.Producer, waiting.ProducerStage));
+            }
+            else if (decidesHere && !redirect)
+            {
+                // The branch is decided here, a stage early, by a comparator of its own. That
+                // saves one of the two squashed instructions, and costs this: the operands are
+                // needed a stage early too, so a result still in EX has to be waited for.
+                var a = ComparatorOperand(Operand.A, rs1);
+                var b = ComparatorOperand(Operand.B, rs2);
+                var sum = Exec.Alu(
+                    control.Alu,
+                    Exec.OperandA(control.SrcA, a, _ifId.Pc),
+                    Exec.OperandB(control.SrcB, b, instruction.Imm));
+                var taken = Exec.Taken(control.Branch, a, b);
+                var target = Exec.Target(control.Branch, _ifId.Pc, instruction.Imm, sum);
+
+                decodeRedirect = taken;
+                decodeTarget = target;
+                _events?.Add(new BranchEvent(_ifId.Seq, taken, target, Mispredicted: taken, Stage.Decode));
+                nextIdEx = new IdEx(true, _ifId.Seq, _ifId.Pc, instruction, a, b, Decided: true, taken, target);
             }
 
-            if (!stall)
+            if (!stall && !nextIdEx.Valid)
             {
                 nextIdEx = new IdEx(true, _ifId.Seq, _ifId.Pc, instruction, x[instruction.Rs1], x[instruction.Rs2]);
             }
@@ -263,6 +299,21 @@ public sealed class PipelineMachine
             {
                 fetchView = new StageView(Occupancy.Squashed, fetching.Seq, fetching.Pc, fetching.Raw);
                 _events?.Add(new FlushEvent(fetching.Seq, flushCause, Stage.Fetch, redirectBy));
+            }
+        }
+        else if (decodeRedirect)
+        {
+            // The branch in ID is taken. It goes on to EX itself; only the one instruction
+            // fetched behind it is from the wrong path.
+            nextIfId = default;
+            _heldFetch = default;
+            _pendingEnd = null;
+            _pc = decodeTarget;
+
+            if (fetching.Valid)
+            {
+                fetchView = new StageView(Occupancy.Squashed, fetching.Seq, fetching.Pc, fetching.Raw);
+                _events?.Add(new FlushEvent(fetching.Seq, FlushCause.Branch, Stage.Fetch, _ifId.Seq));
             }
         }
         else
@@ -417,12 +468,74 @@ public sealed class PipelineMachine
         return Needs(inMemory) ? (StallCause.DataHazard, inMemory, _exMem.Seq, Stage.Memory) : null;
     }
 
+    /// <summary>
+    /// The hazard unit, for a branch that is decided in ID. Its comparator needs the operands
+    /// now, a stage earlier than the ALU would, so it has less to choose from.
+    /// </summary>
+    private (StallCause Cause, byte Register, ulong Producer, Stage ProducerStage)? ComparatorWaitsFor(int rs1, int rs2)
+    {
+        if (Config.Hazards != HazardHandling.Forwarding)
+        {
+            // Stalling only, or nothing at all: the rule is the same for every instruction.
+            return WaitsFor(rs1, rs2);
+        }
+
+        var inExecute = _idEx.Valid && _idEx.Instruction.Control.WritesRd ? _idEx.Instruction.Rd : (byte)0;
+        var inMemory = _exMem.Valid && _exMem.Instruction.Control.WritesRd ? _exMem.Instruction.Rd : (byte)0;
+
+        bool Needs(byte register) => register != 0 && (register == rs1 || register == rs2);
+
+        // A result being computed in EX this cycle does not exist yet. One cycle on it will be
+        // in EX/MEM and can be forwarded here, unless it is a load, which has to finish MEM
+        // first: then it is waited for again below, and is read from the register file after.
+        if (Needs(inExecute))
+        {
+            return (StallCause.BranchOperand, inExecute, _idEx.Seq, Stage.Execute);
+        }
+
+        return Needs(inMemory) && ValueInExMem() is null
+            ? (StallCause.BranchOperand, inMemory, _exMem.Seq, Stage.Memory)
+            : null;
+    }
+
+    /// <summary>
+    /// An operand of a branch decided in ID: forwarded from EX/MEM when the instruction there
+    /// has just computed it, and otherwise read from the register file, which WB has already
+    /// written this cycle.
+    /// </summary>
+    private uint ComparatorOperand(Operand operand, int register)
+    {
+        if (register != 0 && Config.Hazards == HazardHandling.Forwarding
+            && _exMem.Valid && _exMem.Instruction.Control.WritesRd && _exMem.Instruction.Rd == register
+            && ValueInExMem() is { } value)
+        {
+            _events?.Add(new ForwardEvent(_ifId.Seq, ForwardSource.ExMem, operand, (byte)register, value, _exMem.Seq, Stage.Decode));
+            return value;
+        }
+
+        return Hart.X[register];
+    }
+
+    /// <summary>
+    /// The result of the instruction in MEM, if it is one that EX already produced: an
+    /// arithmetic result or a link address. What a load or a CSR read will give is not known yet.
+    /// </summary>
+    private uint? ValueInExMem() => _exMem.Instruction.Control.Wb switch
+    {
+        WbSrc.Alu => _exMem.Alu,
+        WbSrc.PcPlus4 => _exMem.Pc + 4,
+        _ => null,
+    };
+
     // The four latches. Each carries the sequence number given at fetch, so that one instruction
     // can be followed from stage to stage, and the address and word that identify it.
 
     private readonly record struct IfId(bool Valid, ulong Seq, uint Pc, uint Raw);
 
-    private readonly record struct IdEx(bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2);
+    /// <param name="Decided">The branch was decided in ID; its outcome and target travel with it.</param>
+    private readonly record struct IdEx(
+        bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2,
+        bool Decided = false, bool Taken = false, uint Target = 0);
 
     private readonly record struct ExMem(
         bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2, uint Alu, bool Taken, uint Target);

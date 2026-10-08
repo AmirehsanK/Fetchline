@@ -359,7 +359,7 @@ every correct configuration, and "off" reports its first wrong value.
 
 - [x] 6.1 Stall-only hazard handling
 - [x] 6.2 Hazard handling off, and the first-wrong-value report
-- [ ] 6.3 Branches decided in ID
+- [x] 6.3 Branches decided in ID
 - [ ] 6.4 Static and dynamic predictors with a BTB
 - [ ] 6.5 Multi-cycle multiply and divide
 - [ ] 6.6 `fetchline compare`

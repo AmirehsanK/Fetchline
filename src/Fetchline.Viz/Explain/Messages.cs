@@ -27,11 +27,14 @@ public interface IMessages
     /// <summary>With no forwarding, the consumer is held in ID until its producer reaches WB.</summary>
     string DataHazard(string consumer, string register, string producer, string producerStage);
 
+    /// <summary>A branch decided in ID is held there until its operand has been computed.</summary>
+    string BranchOperand(string branch, string register, string producer, string producerStage, string readyAfter);
+
     /// <summary>An operand was taken from a latch: <c>MEM/WB -> EX.A   x4 from lw</c>.</summary>
-    string Forwarded(string latch, string operand, string register, string producer);
+    string Forwarded(string latch, string stage, string operand, string register, string producer);
 
     /// <summary>A branch or jump was taken and what fetch had brought in behind it is thrown away.</summary>
-    string TakenBranch(string branch, string target, int squashed);
+    string TakenBranch(string branch, string stage, string target, int squashed);
 
     /// <summary>A system instruction took effect and what is behind it is fetched again.</summary>
     string SystemFlush(string instruction, int squashed);
@@ -94,11 +97,14 @@ public sealed class EnglishMessages : IMessages
     public string DataHazard(string consumer, string register, string producer, string producerStage) =>
         $"no forwarding: {consumer} (ID) waits for {register} until {producer} ({producerStage}) reaches WB";
 
-    public string Forwarded(string latch, string operand, string register, string producer) =>
-        $"{latch} -> EX.{operand}   {register} from {producer}";
+    public string BranchOperand(string branch, string register, string producer, string producerStage, string readyAfter) =>
+        $"branch in ID: {branch} (ID) needs {register}; {producer} ({producerStage}) has it only after {readyAfter}";
 
-    public string TakenBranch(string branch, string target, int squashed) =>
-        $"{branch} (EX) is taken to {target}; {Count(squashed, "instruction")} behind it {(squashed == 1 ? "is" : "are")} squashed";
+    public string Forwarded(string latch, string stage, string operand, string register, string producer) =>
+        $"{latch} -> {stage}.{operand}   {register} from {producer}";
+
+    public string TakenBranch(string branch, string stage, string target, int squashed) =>
+        $"{branch} ({stage}) is taken to {target}; {Count(squashed, "instruction")} behind it {(squashed == 1 ? "is" : "are")} squashed";
 
     public string SystemFlush(string instruction, int squashed) =>
         $"{instruction} (MEM) is a system instruction; {Count(squashed, "instruction")} behind it {(squashed == 1 ? "is" : "are")} fetched again";

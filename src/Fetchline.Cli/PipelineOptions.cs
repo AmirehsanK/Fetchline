@@ -15,12 +15,23 @@ internal sealed class PipelineOptions
         DefaultValueFactory = _ => "forwarding",
     };
 
+    private readonly Option<string> _branch = new("--branch")
+    {
+        Description = "The stage that decides branches: ex (two instructions squashed when taken) or id (one).",
+        DefaultValueFactory = _ => "ex",
+    };
+
     public PipelineOptions()
     {
         _hazards.AcceptOnlyFromAmong("forwarding", "stall", "off");
+        _branch.AcceptOnlyFromAmong("ex", "id");
     }
 
-    public void AddTo(Command command) => command.Add(_hazards);
+    public void AddTo(Command command)
+    {
+        command.Add(_hazards);
+        command.Add(_branch);
+    }
 
     public PipelineConfig Read(ParseResult parse) => new()
     {
@@ -30,5 +41,6 @@ internal sealed class PipelineOptions
             "off" => HazardHandling.Off,
             _ => HazardHandling.Forwarding,
         },
+        Branches = parse.GetValue(_branch) == "id" ? BranchDecision.Decode : BranchDecision.Execute,
     };
 }

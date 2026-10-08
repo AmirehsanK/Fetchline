@@ -32,6 +32,12 @@ public enum StallCause : byte
     /// and waits until the instruction producing it reaches WB.
     /// </summary>
     DataHazard,
+
+    /// <summary>
+    /// A branch decided in ID needs an operand that an instruction ahead of it is still
+    /// computing: one in EX, or a load that has not finished MEM.
+    /// </summary>
+    BranchOperand,
 }
 
 public enum FlushCause : byte
@@ -63,9 +69,14 @@ public abstract record PipelineEvent(ulong Seq)
 }
 
 /// <summary>An operand was taken from a latch because the register file did not have it yet.</summary>
-/// <param name="Seq">The consumer, in EX.</param>
+/// <param name="Seq">The consumer.</param>
 /// <param name="Producer">The instruction whose result it is.</param>
-public sealed record ForwardEvent(ulong Seq, ForwardSource From, Operand Operand, byte Register, uint Value, ulong Producer)
+/// <param name="To">
+/// The stage the value was delivered to: EX for the ALU, or ID for the comparator of a branch
+/// that is decided there.
+/// </param>
+public sealed record ForwardEvent(
+    ulong Seq, ForwardSource From, Operand Operand, byte Register, uint Value, ulong Producer, Stage To = Stage.Execute)
     : PipelineEvent(Seq)
 {
     public override void AddTo(ref TraceHash hash)
@@ -77,6 +88,7 @@ public sealed record ForwardEvent(ulong Seq, ForwardSource From, Operand Operand
         hash.Add(Register);
         hash.Add(Value);
         hash.Add(Producer);
+        hash.Add((byte)To);
     }
 }
 

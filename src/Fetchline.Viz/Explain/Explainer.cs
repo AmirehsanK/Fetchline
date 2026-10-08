@@ -60,11 +60,22 @@ public sealed class Explainer(StaircaseLayout layout, InstructionLabels labels, 
                         stall.Seq, stall.Producer));
                     break;
 
+                case StallEvent { Cause: StallCause.BranchOperand } stall:
+                    lines.Add(new LogLine(
+                        record.Cycle, LogKind.Stall,
+                        Messages.BranchOperand(
+                            Name(stall.Seq), labels.Register(stall.Register), Name(stall.Producer),
+                            Export.AsciiTrace.Name(stall.ProducerStage),
+                            Export.AsciiTrace.Name(ReadyAfter(stall))),
+                        stall.Seq, stall.Producer));
+                    break;
+
                 case ForwardEvent forward:
                     lines.Add(new LogLine(
                         record.Cycle, LogKind.Forward,
                         Messages.Forwarded(
                             forward.From == ForwardSource.ExMem ? "EX/MEM" : "MEM/WB",
+                            Export.AsciiTrace.Name(forward.To),
                             forward.Operand.ToString(),
                             labels.Register(forward.Register),
                             Name(forward.Producer)),
@@ -86,11 +97,13 @@ public sealed class Explainer(StaircaseLayout layout, InstructionLabels labels, 
         else if (flushes.Count > 0)
         {
             var by = flushes[0].By;
+            var decided = record.Events.OfType<BranchEvent>().FirstOrDefault(branch => branch.Seq == by);
             var text = flushes[0].Cause switch
             {
                 FlushCause.Branch => Messages.TakenBranch(
                     Name(by),
-                    labels.Address(record.Events.OfType<BranchEvent>().FirstOrDefault(branch => branch.Seq == by)?.Target ?? 0),
+                    Export.AsciiTrace.Name(decided?.ResolvedIn ?? Stage.Execute),
+                    labels.Address(decided?.Target ?? 0),
                     flushes.Count),
                 FlushCause.Stop => Messages.Stopped(Name(by), flushes.Count),
                 _ => Messages.SystemFlush(Name(by), flushes.Count),
@@ -146,6 +159,17 @@ public sealed class Explainer(StaircaseLayout layout, InstructionLabels labels, 
         LogKind.Flush => Messages.Flush,
         _ => Messages.Trap,
     };
+
+    /// <summary>
+    /// The stage after which the value a branch is waiting for exists: EX for something the ALU
+    /// computes, MEM for something that has to be read from memory first.
+    /// </summary>
+    private Stage ReadyAfter(StallEvent stall)
+    {
+        var producer = layout.Row(stall.Producer);
+        var isLoad = producer is not null && Decoder.Decode(producer.Raw).Control.Wb is WbSrc.Mem or WbSrc.Csr;
+        return isLoad ? Stage.Memory : Stage.Execute;
+    }
 
     /// <summary>An instruction is named in a sentence by its mnemonic, as its row shows it.</summary>
     private string Name(ulong seq) =>

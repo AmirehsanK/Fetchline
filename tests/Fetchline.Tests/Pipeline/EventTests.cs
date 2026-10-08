@@ -243,7 +243,7 @@ public class EventTests
 
         // The number itself is pinned, so a change in what the pipeline does or reports cannot
         // slip by: when this fails after a deliberate change, look at the new trace, then update it.
-        Assert.Equal(0x8EB6_ED12_4C38_9F1Dul, HashOf("load-use.s"));
+        Assert.Equal(0x60B5_C728_75E4_8A7Dul, HashOf("load-use.s"));
     }
 
     [Fact]

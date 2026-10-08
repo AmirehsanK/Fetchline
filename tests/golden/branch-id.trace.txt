@@ -1,0 +1,12 @@
+                            1    2    3    4    5    6    7    8    9    10
+ 0x00 li   x5, 1            IF   ID   EX   MEM  WB
+ 0x04 beq  x5, x0, skip          IF   ID   ID   EX   MEM  WB
+ 0x08 bne  x5, x0, skip               IF   IF   ID   EX   MEM  WB
+ 0x0c addi x6, x0, 1                            IF   --
+ 0x14 addi x8, x0, 3                                 IF   ID   EX   MEM  WB
+
+ c3  stall    branch in ID: beq (ID) needs x5; li (EX) has it only after EX
+ c4  forward  EX/MEM -> ID.A   x5 from li
+ c5  flush    bne (ID) is taken to skip; 1 instruction behind it is squashed
+ -- squashed: fetched, then thrown away
+ 4 instructions, 10 cycles, CPI 2.50, 1 stall, 1 forward, 1 flush

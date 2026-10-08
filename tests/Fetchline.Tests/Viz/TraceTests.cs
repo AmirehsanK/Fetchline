@@ -223,7 +223,7 @@ public class TraceTests
         Assert.Equal("1 instruction, 5 cycles, CPI 5.00, 0 stalls, 0 forwards", messages.Summary(1, 5, 5, 0, 0, 0));
         Assert.Equal("2 instructions, 1 cycle, CPI 0.50, 1 stall, 1 forward, 1 flush", messages.Summary(2, 1, 0.5, 1, 1, 1));
         Assert.Equal("3 instructions, 9 cycles, CPI 3.00, 2 stalls, 3 forwards, 2 flushes", messages.Summary(3, 9, 3, 2, 3, 2));
-        Assert.Equal("j (EX) is taken to loop; 1 instruction behind it is squashed", messages.TakenBranch("j", "loop", 1));
+        Assert.Equal("j (EX) is taken to loop; 1 instruction behind it is squashed", messages.TakenBranch("j", "EX", "loop", 1));
         Assert.Equal("ecall (MEM) stops the machine; 0 instructions behind it are squashed", messages.Stopped("ecall", 0));
     }
 }
