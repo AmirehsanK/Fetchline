@@ -166,7 +166,7 @@ so one dynamic instruction can be followed across cycles.
 
 | Switch | Values (default first) | Effect |
 |---|---|---|
-| Hazard handling | forwarding / stall only / off | Forwarding from EX/MEM and MEM/WB into EX. Stall only waits in ID until the producer reaches WB. Off gives wrong results on purpose |
+| Hazard handling | forwarding / stall only / off | Forwarding from EX/MEM and MEM/WB into EX. Stall only waits in ID until the producer reaches WB. Off leaves data hazards alone, so an instruction takes whatever the register file held, and gives wrong results on purpose; branches and system instructions still flush what is behind them. The run is checked in lockstep, and the trace names the first wrong value |
 | Branch decision | EX / ID | Two squashed instructions, or one with a comparator and forwarding in ID |
 | Predictor | not taken / backward-taken static / 1-bit / 2-bit, the last two with a BTB of 16, 64 or 256 entries | Updated when the branch resolves |
 | Multiply and divide | 1 cycle / N cycles | N cycles holds IF, ID and EX: a stall that is not a data hazard |
@@ -358,7 +358,7 @@ official tests.
 every correct configuration, and "off" reports its first wrong value.
 
 - [x] 6.1 Stall-only hazard handling
-- [ ] 6.2 Hazard handling off, and the first-wrong-value report
+- [x] 6.2 Hazard handling off, and the first-wrong-value report
 - [ ] 6.3 Branches decided in ID
 - [ ] 6.4 Static and dynamic predictors with a BTB
 - [ ] 6.5 Multi-cycle multiply and divide

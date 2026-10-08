@@ -1,0 +1,10 @@
+                            1    2    3    4    5    6    7    8    9    10   11
+ 0x00 sub  x2, x3, x1       IF   ID   EX   MEM  WB
+ 0x04 and  x12, x2, x5           IF   ID   ID   ID   EX   MEM  WB
+ 0x08 or   x13, x6, x2                IF   IF   IF   ID   EX   MEM  WB
+ 0x0c add  x14, x2, x2                               IF   ID   EX   MEM  WB
+ 0x10 sw   x15, 100(x2)                                   IF   ID   EX   MEM  WB
+
+ c3  stall    no forwarding: and (ID) waits for x2 until sub (EX) reaches WB
+ c4  stall    no forwarding: and (ID) waits for x2 until sub (MEM) reaches WB
+ 5 instructions, 11 cycles, CPI 2.20, 2 stalls, 0 forwards

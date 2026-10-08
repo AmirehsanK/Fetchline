@@ -32,12 +32,18 @@ public static class AsciiTrace
 
     private const int Gap = 5;
 
+    /// <param name="divergence">
+    /// The first instruction on which the pipeline differed from the reference machine, when the
+    /// run was checked and they did differ. It is reported under the totals.
+    /// </param>
     public static string Write(
-        Program program, IReadOnlyList<CycleRecord> records, IMessages messages, TraceOptions? options = null)
+        Program program, IReadOnlyList<CycleRecord> records, IMessages messages, TraceOptions? options = null,
+        Divergence? divergence = null)
     {
         options ??= new TraceOptions();
         var layout = StaircaseLayout.Build(records);
         var labels = new InstructionLabels(program);
+        var explainer = new Explainer(layout, labels, messages);
         var text = new StringBuilder();
 
         var from = Math.Max(1, options.From);
@@ -95,7 +101,6 @@ public static class AsciiTrace
 
         if (options.Log)
         {
-            var explainer = new Explainer(layout, labels, messages);
             var lines = explainer.Explain(records).Where(line => line.Cycle >= from && line.Cycle <= to).ToList();
             if (lines.Count > 0)
             {
@@ -124,6 +129,12 @@ public static class AsciiTrace
         text.Append(' ')
             .Append(messages.Summary(stats.Instructions, stats.Cycles, stats.Cpi, stats.Stalls, stats.Forwards, stats.Flushes))
             .Append('\n');
+
+        if (divergence is not null)
+        {
+            text.Append(' ').Append(explainer.Describe(divergence)).Append('\n');
+        }
+
         return text.ToString();
     }
 

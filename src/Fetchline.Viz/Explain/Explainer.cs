@@ -99,6 +99,45 @@ public sealed class Explainer(StaircaseLayout layout, InstructionLabels labels, 
         }
     }
 
+    /// <summary>
+    /// The first wrong value, as a sentence: which instruction it was, and what the pipeline did
+    /// against what the reference machine did. With hazard handling off this is the lesson.
+    /// </summary>
+    public string Describe(Divergence divergence)
+    {
+        var (ours, theirs) = (divergence.Pipeline, divergence.Reference);
+        string Hex(uint value) => "0x" + value.ToString("x8", System.Globalization.CultureInfo.InvariantCulture);
+        string Text(in Core.Trace.Commit commit) => commit.Stop == Core.Trace.StopReason.EndOfProgram
+            ? Messages.EndOfProgram
+            : "'" + labels.Describe(commit.Pc, commit.Instruction.Raw) + "'";
+        string Written(in Core.Trace.Commit commit) => commit.Register == 0
+            ? Messages.NoRegister
+            : labels.Register(commit.Register) + " = " + Hex(commit.Value);
+        string Stored(in Core.Trace.Commit commit) => commit.StoreBytes == 0
+            ? Messages.NoStore
+            : Hex(commit.StoreValue) + " -> " + Hex(commit.StoreAddress);
+
+        string detail;
+        if (ours.Pc != theirs.Pc || ours.Instruction.Raw != theirs.Instruction.Raw)
+        {
+            detail = Messages.WrongInstruction(Text(ours), Text(theirs));
+        }
+        else if (ours.Register != theirs.Register || ours.Value != theirs.Value)
+        {
+            detail = Messages.WrongRegister(Written(ours), Written(theirs));
+        }
+        else if (ours.StoreBytes != theirs.StoreBytes || ours.StoreAddress != theirs.StoreAddress || ours.StoreValue != theirs.StoreValue)
+        {
+            detail = Messages.WrongStore(Stored(ours), Stored(theirs));
+        }
+        else
+        {
+            detail = Messages.WrongPath(labels.Address(ours.NextPc), labels.Address(theirs.NextPc));
+        }
+
+        return Messages.FirstWrongValue(divergence.Index, divergence.Cycle, Text(theirs), detail);
+    }
+
     /// <summary>The word a line uses for a kind of event.</summary>
     public string Label(LogKind kind) => kind switch
     {

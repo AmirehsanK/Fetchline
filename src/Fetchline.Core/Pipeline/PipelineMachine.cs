@@ -389,6 +389,12 @@ public sealed class PipelineMachine
 
         bool Needs(byte register) => register != 0 && (register == rs1 || register == rs2);
 
+        if (Config.Hazards == HazardHandling.Off)
+        {
+            // Nobody is watching: the instruction goes on with whatever it read.
+            return null;
+        }
+
         if (Config.Hazards == HazardHandling.Forwarding)
         {
             // The load-use hazard. The instruction ahead, now in EX, is a load: its value will

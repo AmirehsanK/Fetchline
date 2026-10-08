@@ -14,6 +14,14 @@ public enum HazardHandling : byte
     /// has reached WB. Always right, and slower.
     /// </summary>
     StallOnly,
+
+    /// <summary>
+    /// Nothing at all: an instruction takes whatever the register file held when it was in ID.
+    /// The program computes a wrong answer, on purpose, to show what the hazard logic is for.
+    /// Branches and system instructions still flush what is behind them; only data hazards are
+    /// left unhandled.
+    /// </summary>
+    Off,
 }
 
 /// <summary>
@@ -26,4 +34,10 @@ public sealed record PipelineConfig
     public static PipelineConfig Default { get; } = new();
 
     public HazardHandling Hazards { get; init; } = HazardHandling.Forwarding;
+
+    /// <summary>
+    /// Whether a pipeline built this way computes what the program says. The one that does not
+    /// is the one with its hazard handling switched off.
+    /// </summary>
+    public bool IsCorrect => Hazards != HazardHandling.Off;
 }

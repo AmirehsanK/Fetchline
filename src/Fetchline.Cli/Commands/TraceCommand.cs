@@ -29,11 +29,13 @@ internal static class TraceCommand
             Description = "Stop after this many cycles, in case the program never ends.",
             DefaultValueFactory = _ => DefaultBudget,
         };
+        var switches = new PipelineOptions();
 
         var command = new Command("trace", "Run a program on the pipeline and draw what each cycle did.")
         {
             file, from, cycles, noLog, budget,
         };
+        switches.AddTo(command);
 
         command.SetAction(parse =>
         {
@@ -44,13 +46,16 @@ internal static class TraceCommand
                 return exitCode;
             }
 
-            // What the program prints is not part of the picture; "fetchline run" shows it.
-            var machine = new PipelineMachine(program, TextWriter.Null);
+            // The reference machine runs beside the pipeline and checks every instruction it
+            // commits. What the program prints is not part of the picture; "fetchline run" shows it.
+            var config = switches.Read(parse);
+            var lockstep = new Lockstep(program, TextWriter.Null, config: config);
+            var machine = lockstep.Pipeline;
             var records = new List<CycleRecord>();
             var limit = parse.GetValue(budget);
             while (!machine.IsFinished && machine.Stopped != StopReason.Breakpoint && (ulong)records.Count < limit)
             {
-                records.Add(machine.Step());
+                records.Add(lockstep.Step());
             }
 
             var options = new TraceOptions
@@ -59,7 +64,15 @@ internal static class TraceCommand
                 Cycles = parse.GetValue(cycles),
                 Log = !parse.GetValue(noLog),
             };
-            stdout.Write(AsciiTrace.Write(program, records, EnglishMessages.Instance, options));
+            stdout.Write(AsciiTrace.Write(program, records, EnglishMessages.Instance, options, lockstep.Divergence));
+
+            // With its hazard handling off the pipeline is meant to go wrong, and saying where is
+            // the point. Built any other way, a difference is a fault in this program.
+            if (lockstep.Divergence is not null && config.IsCorrect)
+            {
+                stderr.WriteLine("fetchline: the pipeline differed from the reference machine, which is a bug in Fetchline");
+                return FetchlineCommand.Failed;
+            }
 
             var last = records.Count > 0 ? records[^1] : null;
             var stop = last?.End ?? last?.Commit;

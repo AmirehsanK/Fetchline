@@ -50,6 +50,30 @@ public interface IMessages
 
     /// <summary>The diagram shows only some of the cycles.</summary>
     string MoreCycles(ulong shownFrom, ulong shownTo, ulong total);
+
+    /// <summary>What stands where a register would be named, when none was written.</summary>
+    string NoRegister { get; }
+
+    /// <summary>What stands where a store would be described, when there was none.</summary>
+    string NoStore { get; }
+
+    /// <summary>What stands where an instruction would be named, when the program had ended.</summary>
+    string EndOfProgram { get; }
+
+    /// <summary>The first instruction on which the pipeline and the reference machine differed.</summary>
+    string FirstWrongValue(ulong index, ulong cycle, string instruction, string detail);
+
+    /// <summary>The two machines wrote different registers or values.</summary>
+    string WrongRegister(string pipeline, string reference);
+
+    /// <summary>The two machines stored different things.</summary>
+    string WrongStore(string pipeline, string reference);
+
+    /// <summary>The two machines went on to different addresses.</summary>
+    string WrongPath(string pipeline, string reference);
+
+    /// <summary>The two machines ran different instructions.</summary>
+    string WrongInstruction(string pipeline, string reference);
 }
 
 public sealed class EnglishMessages : IMessages
@@ -98,6 +122,28 @@ public sealed class EnglishMessages : IMessages
     public string MoreCycles(ulong shownFrom, ulong shownTo, ulong total) => string.Create(
         CultureInfo.InvariantCulture,
         $"cycles {shownFrom} to {shownTo} of {total}; --from and --cycles show the rest");
+
+    public string NoRegister => "no register";
+
+    public string NoStore => "nothing";
+
+    public string EndOfProgram => "the end of the program";
+
+    public string FirstWrongValue(ulong index, ulong cycle, string instruction, string detail) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"first wrong value: instruction {index}, {instruction}, in cycle {cycle}: {detail}");
+
+    public string WrongRegister(string pipeline, string reference) =>
+        $"the pipeline wrote {pipeline}, the reference machine wrote {reference}";
+
+    public string WrongStore(string pipeline, string reference) =>
+        $"the pipeline stored {pipeline}, the reference machine stored {reference}";
+
+    public string WrongPath(string pipeline, string reference) =>
+        $"the pipeline went on to {pipeline}, the reference machine to {reference}";
+
+    public string WrongInstruction(string pipeline, string reference) =>
+        $"the pipeline ran {pipeline} where the reference machine ran {reference}";
 
     private static string Count(long number, string one, string? many = null) => string.Create(
         CultureInfo.InvariantCulture, $"{number} {(number == 1 ? one : many ?? one + "s")}");
