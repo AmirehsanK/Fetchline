@@ -25,6 +25,10 @@ public sealed class PipelineMachine
     private uint _pc;
     private ulong _nextSeq = 1;
 
+    // The instruction that is waiting in IF because the stage ahead of it is stalled. It was
+    // fetched once and is not fetched again: it keeps its sequence number while it waits.
+    private IfId _heldFetch;
+
     // Fetch has run into the end of the code, or into something that is not code. It is not an
     // instruction and occupies no stage; it takes effect once everything before it has completed.
     private Commit? _pendingEnd;
@@ -111,27 +115,52 @@ public sealed class PipelineMachine
         // WB has already written this cycle, so a value written now is the value read now.
         var nextIdEx = default(IdEx);
         var decodeView = default(StageView);
+        var stall = false;
         if (_ifId.Valid)
         {
             var instruction = Decoder.Decode(_ifId.Raw);
-            nextIdEx = new IdEx(true, _ifId.Seq, _ifId.Pc, instruction, x[instruction.Rs1], x[instruction.Rs2]);
-            decodeView = new StageView(Occupancy.Normal, _ifId.Seq, _ifId.Pc, _ifId.Raw);
+            var control = instruction.Control;
+
+            // The load-use hazard. The instruction ahead, now in EX, is a load: its value will
+            // not exist until the end of MEM, one cycle too late for this instruction to take it
+            // into EX next cycle. Forwarding cannot reach back in time, so this instruction waits
+            // here for a cycle, a bubble goes into EX in its place, and then MEM/WB can forward.
+            var ahead = _idEx.Instruction;
+            stall = _idEx.Valid && ahead.Control.Mem == MemOp.Load && ahead.Rd != 0
+                && ((control.UsesRs1 && instruction.Rs1 == ahead.Rd) || (control.UsesRs2 && instruction.Rs2 == ahead.Rd));
+
+            if (!stall)
+            {
+                nextIdEx = new IdEx(true, _ifId.Seq, _ifId.Pc, instruction, x[instruction.Rs1], x[instruction.Rs2]);
+            }
+
+            decodeView = new StageView(stall ? Occupancy.Held : Occupancy.Normal, _ifId.Seq, _ifId.Pc, _ifId.Raw);
         }
 
         // ---- IF: read the next instruction ---------------------------------------------------
-        var nextIfId = default(IfId);
-        var fetchView = default(StageView);
-        if (_pendingEnd is null)
+        var fetching = _heldFetch;
+        if (!fetching.Valid && _pendingEnd is null)
         {
             if (hart.TryFetch(_pc, out var word, out var stop))
             {
-                nextIfId = new IfId(true, _nextSeq++, _pc, word);
-                fetchView = new StageView(Occupancy.Normal, nextIfId.Seq, _pc, word);
-                _pc += 4;
+                fetching = new IfId(true, _nextSeq++, _pc, word);
             }
             else
             {
                 _pendingEnd = stop;
+            }
+        }
+
+        // A stall in ID holds everything behind it: IF/ID keeps its instruction, and so does IF.
+        var nextIfId = stall ? _ifId : fetching;
+        _heldFetch = stall ? fetching : default;
+        var fetchView = default(StageView);
+        if (fetching.Valid)
+        {
+            fetchView = new StageView(stall ? Occupancy.Held : Occupancy.Normal, fetching.Seq, fetching.Pc, fetching.Raw);
+            if (!stall)
+            {
+                _pc = fetching.Pc + 4;
             }
         }
 
@@ -143,7 +172,8 @@ public sealed class PipelineMachine
 
         // A run that reaches the end of its code is over when the last instruction has left WB.
         Commit? end = null;
-        if (_pendingEnd is { } pending && !(_ifId.Valid || _idEx.Valid || _exMem.Valid || _memWb.Valid))
+        if (_pendingEnd is { } pending
+            && !(_heldFetch.Valid || _ifId.Valid || _idEx.Valid || _exMem.Valid || _memWb.Valid))
         {
             end = pending;
             Stopped = pending.Stop;
