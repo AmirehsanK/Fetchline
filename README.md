@@ -75,6 +75,10 @@ cycle instead of two, but every branch waits a cycle for the `addi` just ahead o
  off, ex, not-taken: first wrong value: instruction 4, 'add a0, a0, t0', in cycle 8: the pipeline wrote a0 = 0x00000000, the reference machine wrote a0 = 0x00000001
 ```
 
+Built any other way it is right, and that is tested rather than hoped: 2,000 random programs
+and the official tests run on each of the 64 correct configurations, every run in lockstep with
+the reference machine.
+
 ```bash
 dotnet run --project src/Fetchline.Cli -- run examples/fib.s
 ```

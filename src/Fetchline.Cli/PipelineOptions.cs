@@ -123,6 +123,46 @@ internal sealed class PipelineOptions
             IsGiven(parse, _predictor) ? [given.Predictor] : null);
     }
 
+    /// <summary>Whether any of the switches was given on the command line.</summary>
+    public bool AnyGiven(CommandResult command) =>
+        new Option[] { _hazards, _branch, _predictor, _btb, _mulDiv }.Any(option => command.GetResult(option) is { Implicit: false });
+
+    /// <summary>
+    /// A configuration as the switches that give it, leaving out those at their defaults:
+    /// nothing at all for the textbook pipeline.
+    /// </summary>
+    public static string Describe(PipelineConfig config)
+    {
+        var standard = PipelineConfig.Default;
+        var given = new List<string>();
+        if (config.Hazards != standard.Hazards)
+        {
+            given.Add("--hazards " + SwitchNames.Of(config.Hazards));
+        }
+
+        if (config.Branches != standard.Branches)
+        {
+            given.Add("--branch " + SwitchNames.Of(config.Branches));
+        }
+
+        if (config.Predictor != standard.Predictor)
+        {
+            given.Add("--predictor " + SwitchNames.Of(config.Predictor));
+        }
+
+        if (config.BtbEntries != standard.BtbEntries)
+        {
+            given.Add("--btb " + config.BtbEntries.ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (config.MulDivCycles != standard.MulDivCycles)
+        {
+            given.Add("--muldiv " + config.MulDivCycles.ToString(CultureInfo.InvariantCulture));
+        }
+
+        return string.Join(' ', given);
+    }
+
     private static bool IsGiven(ParseResult parse, Option option) => parse.GetResult(option) is { Implicit: false };
 
     /// <summary>

@@ -53,3 +53,11 @@ jobs:
         run: >-
           dotnet run --project src/Fetchline.Cli -c Release --no-build --
           test tests/vectors/riscv-tests/elf --exclusions tests/conformance-exclusions.txt --pipeline
+
+      # Once more on a pipeline with every switch moved off its default. The test projects run
+      # all 64 correct configurations; this is the one a user would type.
+      - name: Official RISC-V tests on the pipeline built the other way
+        run: >-
+          dotnet run --project src/Fetchline.Cli -c Release --no-build --
+          test tests/vectors/riscv-tests/elf --exclusions tests/conformance-exclusions.txt --pipeline
+          --hazards stall --branch id --predictor 2-bit --btb 16 --muldiv 3

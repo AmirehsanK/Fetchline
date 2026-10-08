@@ -306,9 +306,29 @@ only when it is: a program with no close dependencies is right however it is run
 
 How they were checked:
 
-- **Lockstep in each configuration.** Every example runs in lockstep stalling only, with
-  branches decided in ID, under each of the four predictors with both branch decisions, and with
-  a slow multiplier in five combinations of the other switches. 400 random programs of branches,
+- **Every correct configuration at once.** The playground offers 64 correct ways to build the
+  pipeline: forwarding or stalling only, branches in EX or in ID, the four predictors with the
+  two that keep a table at 16, 64 and 256 entries, and a multiplier of one cycle or three. 2,000
+  random programs run in lockstep on every one of them, 128,000 runs, and so do the 66 official
+  tests. The programs are made to end whatever their data turns out to be, and are made of
+  everything the hazard logic has to get right: arithmetic on what was just computed, loads and
+  stores at computed addresses, multiplies and divides, forward branches on data, counted loops
+  two deep with early exits, calls direct and through a register, CSR accesses and system
+  calls. A separate test counts what they exercise, so that the sweep cannot pass by not trying.
+  300 of them run again outside what the playground offers: buffers of 1, 2, 4 and 65,536
+  entries, and multipliers of 2, 5, 7 and 64 cycles.
+- **The sweep can fail.** When it was written, two faults were put into the pipeline on purpose
+  and taken out again: a slow multiply that did not keep its forwarded operands, and a branch in
+  ID that did not wait for a load still in MEM. Each was reported with the number of the program,
+  the switches that showed it and the first wrong instruction.
+- **Off never breaks the machine.** The same programs run with hazard handling off, 2,000 runs.
+  Nearly all go wrong, and then do whatever wrong values make them do: many end in a fault, a
+  few never end and are cut off, and the rest reach an end of their own. The simulator itself
+  never fails, and every report is true: the two records shown really differ, nothing was
+  compared after them, and a run with no report ended with the registers the reference has.
+- **Lockstep on the examples.** Every example runs in lockstep stalling only, with branches
+  decided in ID, under each of the four predictors with both branch decisions, and with a slow
+  multiplier in five combinations of the other switches. 400 random programs of branches,
   jumps, loads and stores run in lockstep with branches decided in ID, with forwarding and
   again stalling only.
 - **Stalling only has a closed form too.** If `d(i)` is the cycle instruction `i` leaves ID and
@@ -339,7 +359,26 @@ How they were checked:
   not a sum, because a wait behind the multiplier can be the same cycles as a wait for a value.
 - **Timing over the official tests again.** With the rule about wrong guesses in place the 66
   tests take 26,575 cycles where they took 26,581: three jumps in the suite go to the very next
-  instruction, which is where fetch was going anyway.
+  instruction, which is where fetch was going anyway. Lockstep cannot see a pipeline that is
+  right but slower than it was, so the total is pinned with each switch moved on its own:
+
+  | Built | Cycles for the 66 tests |
+  |---|---|
+  | forwarding, EX, not-taken (the textbook pipeline) | 26,575 |
+  | stalling only | 39,740 |
+  | branches decided in ID | 28,229 |
+  | backward-taken | 26,209 |
+  | one-bit, and two-bit | 27,183 |
+  | a multiplier of three cycles | 27,043 |
+
+  The predictors that learn are slower here than guessing not-taken, and that is right. The
+  tests are full of loops that go round exactly twice: not-taken is wrong once, on the way
+  back, while a predictor that has just seen the branch taken expects it taken again and is
+  wrong both times. The slow multiplier adds exactly two cycles for each of the 234 multiplies
+  and divides the suite completes, a count taken on the reference machine.
+- **Off against the official tests.** With hazard handling off, `fetchline test --pipeline`
+  fails all 64 of them, each at a named first wrong value: the tests are not so gentle that a
+  pipeline with no hazard logic gets through one.
 
 ## 8. Measurements
 

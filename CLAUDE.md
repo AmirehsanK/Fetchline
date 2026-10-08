@@ -33,6 +33,11 @@ dotnet run --project src/Fetchline.Cli -- <command>   # the command line, from s
 dotnet run -c Release --project bench/Fetchline.Benchmarks -- --filter '*'   # the figures in docs/CPU.md
 ```
 
+`dotnet test` takes about twenty seconds here. Most of that is `EveryConfigurationTests`, which
+runs 2,000 random programs on all 64 correct configurations, in parallel; a failure there prints
+the number of the program, its seed and the switches, which is everything needed to replay it
+with `ProgramGenerator` and `fetchline trace`.
+
 The diagrams under `tests/golden` are compared exactly. After a deliberate change to what a trace
 looks like, set `FETCHLINE_UPDATE_GOLDEN=1`, run the tests once, and read every file that changed
 before committing it: they are the pictures the tool draws.

@@ -31,15 +31,28 @@ internal static class TestCommand
         {
             Description = "Run on the pipeline, checked against the reference machine instruction by instruction.",
         };
+        var switches = new PipelineOptions();
 
         var command = new Command("test", "Run a folder of official test programs.")
         {
             directory, exclusions, budget, verbose, pipeline,
         };
+        switches.AddTo(command);
+
+        // A switch says how the pipeline is built. Without --pipeline it would change nothing,
+        // and a run that quietly ignored it would look like a run that had tested it.
+        command.Validators.Add(result =>
+        {
+            if (!result.GetValue(pipeline) && switches.AnyGiven(result))
+            {
+                result.AddError("The switches say how the pipeline is built; add --pipeline to run the tests on it.");
+            }
+        });
 
         command.SetAction(parse =>
         {
             var (stdout, stderr) = (parse.InvocationConfiguration.Output, parse.InvocationConfiguration.Error);
+            var config = parse.GetValue(pipeline) ? switches.Read(parse) : null;
             var folder = parse.GetValue(directory)!;
             if (!folder.Exists)
             {
@@ -70,7 +83,7 @@ internal static class TestCommand
                     continue;
                 }
 
-                var verdict = Run(bytes, parse.GetValue(budget), parse.GetValue(pipeline));
+                var verdict = Run(bytes, parse.GetValue(budget), config);
                 var isExcluded = excluded.Remove(file.Name, out var reason);
 
                 // An excluded test is still run. If it passes, the list is out of date, and that
@@ -112,7 +125,10 @@ internal static class TestCommand
                 return FetchlineCommand.Unusable;
             }
 
-            var machine = parse.GetValue(pipeline) ? "pipeline, in lockstep with the reference machine" : "reference machine";
+            var built = config is null ? string.Empty : PipelineOptions.Describe(config);
+            var machine = config is null ? "reference machine"
+                : built.Length == 0 ? "pipeline, in lockstep with the reference machine"
+                : $"pipeline {built}, in lockstep with the reference machine";
             stdout.WriteLine($"{passed} passed, {failed} failed, {skipped} excluded ({machine})");
             return failed == 0 ? FetchlineCommand.Ok : FetchlineCommand.Failed;
         });
@@ -139,7 +155,8 @@ internal static class TestCommand
         return excluded;
     }
 
-    private static TestVerdict Run(byte[] elf, ulong budget, bool onPipeline)
+    /// <param name="pipeline">How the pipeline is built, or null to run on the reference machine alone.</param>
+    private static TestVerdict Run(byte[] elf, ulong budget, PipelineConfig? pipeline)
     {
         if (!ElfFile.TryRead(elf, out var program, out var error))
         {
@@ -147,18 +164,21 @@ internal static class TestCommand
         }
 
         // The tests are bare-metal programs whether or not their symbols survived.
-        if (!onPipeline)
+        if (pipeline is null)
         {
             var machine = new ReferenceMachine(program!, TextWriter.Null, ExecutionEnvironment.Bare);
             return TestVerdict.Of(machine.Run(budget));
         }
 
-        var lockstep = new Lockstep(program!, TextWriter.Null, ExecutionEnvironment.Bare);
+        var lockstep = new Lockstep(program!, TextWriter.Null, ExecutionEnvironment.Bare, pipeline);
         lockstep.Pipeline.Recording = false;
+
         // The budget is counted here and not read from the machine: a test may write the
-        // counters, and rv32mi-p-instret_overflow sets one to nearly its largest value.
+        // counters, and rv32mi-p-instret_overflow sets one to nearly its largest value. A cycle
+        // is not an instruction, and a slow multiplier can make it a small part of one.
+        var limit = budget * (ulong)(4 + pipeline.MulDivCycles);
         CycleRecord? last = null;
-        for (ulong cycle = 0; cycle < 4 * budget && !lockstep.Pipeline.IsFinished && lockstep.Divergence is null; cycle++)
+        for (ulong cycle = 0; cycle < limit && !lockstep.Pipeline.IsFinished && lockstep.Divergence is null; cycle++)
         {
             last = lockstep.Step();
         }

@@ -298,6 +298,9 @@ wrong value is named under the table. The names in a row are the names the switc
 row can be typed back to `trace`. The table is made by `Comparison` in the engine and
 `CompareTable` in `Fetchline.Viz`, which the playground's compare view will use as well.
 
+`test --pipeline` takes the same switches and runs the official tests on a pipeline built that
+way; a switch without `--pipeline` is refused, since it would change nothing.
+
 ## 10. Milestones
 
 Each milestone is split into sections; a section is one commit, pushed when it is green. A box is
@@ -380,23 +383,47 @@ every correct configuration, and "off" reports its first wrong value.
 - [x] 6.4 Static and dynamic predictors with a BTB
 - [x] 6.5 Multi-cycle multiply and divide
 - [x] 6.6 `fetchline compare`
-- [ ] 6.7 Lockstep across every configuration on random programs with branches
+- [x] 6.7 Lockstep across every configuration on random programs with branches
 
 **M7. Web playground: editor, controls, staircase with arrows, hazard log, state panes.** Done
 when, in the browser, you can type a load and its use, step, and read the stall explained; the
 download size is measured and written down.
 
+- [ ] 7.1 The session: assemble, step, step back, run and reset, with no user interface in it
+- [ ] 7.2 The Blazor WebAssembly project and the display: bezel, phosphor, the plain switch
+- [ ] 7.3 The editor: the assembler's own lexer for highlighting, its diagnostics, the gutter
+- [ ] 7.4 The staircase as a character grid, with held and squashed marks and forwarding arrows
+- [ ] 7.5 The hazard log, and jumping to the cycle of a line
+- [ ] 7.6 The state panes: registers, memory, console and counters
+- [ ] 7.7 The controls, the function keys and the start-up sequence
+- [ ] 7.8 Checked in a real browser; the download size measured and written down
+
 **M8. Datapath view, configuration, compare table, examples, share links, timeline.** Done when a
 link opened in a fresh profile shows the same cycle and the same numbers.
+
+- [ ] 8.1 The configuration panel: the what-if switches
+- [ ] 8.2 The datapath as data, and the paths that are active in a cycle
+- [ ] 8.3 The datapath drawn, with values on hover
+- [ ] 8.4 The compare table
+- [ ] 8.5 The examples menu
+- [ ] 8.6 The share codec, held to malformed and oversized input, and links that use it
+- [ ] 8.7 The timeline, and long runs in slices
+- [ ] 8.8 Checked in a real browser: a link in a fresh profile shows the same cycle and numbers
 
 **M9. README with real screenshots, `docs/CPU.md`, Pages workflow, exports, Persian.** Done when
 the live site is checked by hand in both languages and a Kanata file opens in Konata.
 
+- [ ] 9.1 Exports: the trace as JSON and as Kanata, the staircase as SVG and PNG
+- [ ] 9.2 The Persian catalog, and a right-to-left page whose diagrams stay left to right
+- [ ] 9.3 The README with real screenshots, and `docs/CPU.md` complete
+- [ ] 9.4 The Pages workflow (switching Pages on is the owner's decision)
+- [ ] 9.5 The live site checked by hand in both languages; a Kanata file opened in Konata
+
 **M10+. One depth track** (a branch-prediction lab, a cache simulator, guided lessons or an
 out-of-order core), with its own test and its own example.
 
-M7 to M9 are split into sections when M6 is done. M0 to M6 already make a complete, verified
-command-line tool; M7 and M8 make it something to link to.
+M0 to M6 already make a complete, verified command-line tool; M7 and M8 make it something to
+link to.
 
 ## 11. Verification
 
@@ -410,7 +437,8 @@ Automated, on every push:
 - **Pipeline timing:** golden diagrams for the textbook sequences; closed-form cycle counts on
   seeded random straight-line programs.
 - **Pipeline correctness:** lockstep against the reference on the examples, the official tests
-  and the random programs, under each configuration.
+  and the random programs, under each configuration: 2,000 seeded random programs and the 66
+  official tests on each of the 64 correct configurations the playground offers.
 - **Determinism:** the hash of a record stream is stable, and the state after replaying to cycle
   `k` equals the state when first there.
 - **Viz:** layout snapshots, explanation text in both languages, the Kanata golden file, and the
