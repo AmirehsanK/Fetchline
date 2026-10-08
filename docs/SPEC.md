@@ -306,7 +306,7 @@ round-trips over random fields and every match and mask equals the `riscv-opcode
 **M2. Assembler, `Program`, ELF32; `fetchline asm` and `dis`.** Done when the examples assemble,
 assembling a disassembled random word gives the word back, and every error has a line and column.
 
-- [ ] 2.1 Diagnostics and the lexer
+- [x] 2.1 Diagnostics and the lexer
 - [ ] 2.2 Expressions
 - [ ] 2.3 The statement parser: labels, directives, operands
 - [ ] 2.4 `Program`, sections and the layout pass
