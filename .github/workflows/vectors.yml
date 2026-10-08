@@ -1,0 +1,49 @@
+name: Vectors
+
+# Builds the official RISC-V test programs with a real toolchain and commits them under
+# tests/vectors, with the opcode files and a PROVENANCE.md. The development machine has no RISC-V
+# compiler, so this is the only place they are built. Started by hand, and only when the pinned
+# commits in tools/build-vectors.sh change:
+#
+#   gh workflow run vectors.yml
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vectors
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and commit the test vectors
+    # Pinned, because the compiler and objdump versions are part of the provenance.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf make
+
+      - name: Build
+        run: bash tools/build-vectors.sh tests/vectors
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/vectors
+          # PROVENANCE.md carries the date and the run, so it alone always differs.
+          if git diff --cached --quiet -- tests/vectors/riscv-tests tests/vectors/riscv-opcodes; then
+            echo "The vectors are unchanged."
+            exit 0
+          fi
+          git commit -m "Rebuild the test vectors from the pinned commits"
+          # main may have moved while this ran; the vectors touch nothing else.
+          git pull --rebase origin main
+          git push origin HEAD:main
