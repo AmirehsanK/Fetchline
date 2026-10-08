@@ -61,3 +61,19 @@ jobs:
           dotnet run --project src/Fetchline.Cli -c Release --no-build --
           test tests/vectors/riscv-tests/elf --exclusions tests/conformance-exclusions.txt --pipeline
           --hazards stall --branch id --predictor 2-bit --btb 16 --muldiv 3
+
+      # The playground as it would be served: trimmed and compressed. Publishing writes a gzip
+      # and a Brotli copy beside every file, so the download is a matter of adding up. The
+      # figure in docs/CPU.md is 2.2 MB with Brotli; a build past 3 MB has gained something it
+      # should not have, and fails here.
+      - name: Publish the playground and measure the download
+        run: |
+          dotnet publish src/Fetchline.Web -c Release -o artifacts/site --nologo
+          cd artifacts/site/wwwroot
+          total() { find . -type f "$@" -printf '%s\n' | awk '{ sum += $1 } END { print sum + 0 }'; }
+          plain=$(total ! -name '*.br' ! -name '*.gz')
+          gzip=$(total -name '*.gz')
+          brotli=$(total -name '*.br')
+          echo "The playground: $plain bytes as they are, $gzip with gzip, $brotli with Brotli"
+          test "$brotli" -gt 0
+          test "$brotli" -lt 3000000

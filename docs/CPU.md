@@ -403,3 +403,29 @@ comparable with the pipeline matters more here than being fast. Two things were 
 anyway. Memory keeps a small table of recently used pages, hashed so that code at `0x0000_0000`
 and data at `0x1000_0000` do not evict each other; and the record of a step is copied into the
 machine only when it is a stop. Together they took a run from 4.64 ms to 3.77 ms.
+
+### 8.1 What the playground costs to download
+
+Taken with `pwsh tools/site-size.ps1` on 8 October 2026, which publishes the playground in
+Release (trimmed, .NET 10.0.11, without the `wasm-tools` workload) and adds up what was
+published. Publishing writes a gzip and a Brotli copy beside every file, so the three columns
+are the same 44 files three ways, and the first visit downloads all of them.
+
+| What | As they are | With gzip | With Brotli |
+|---|---|---|---|
+| Everything a first visit downloads | 6,666,949 bytes | 2,642,769 | 2,168,961 |
+| The .NET runtime, `dotnet.native.wasm` | 3,002,094 | 1,207,892 | 976,842 |
+| The core library, `System.Private.CoreLib` | 1,488,149 | 569,392 | 460,229 |
+| Fetchline itself: the engine, `Fetchline.Viz`, the page, its stylesheet and scripts | 334,904 | 139,268 | 114,836 |
+
+So the download is 2.2 MB from a server that sends Brotli and 2.6 MB from one that sends gzip,
+and one part in twenty of it is Fetchline; the rest is the runtime it runs on. The engine was
+kept free of package references partly for this: `Fetchline.Core` is 187 KB as it is and 64 KB
+compressed. The runtime's share could be cut by relinking it, which needs the `wasm-tools`
+workload; that is not installed here and has not been tried.
+
+CI publishes the playground on every push, prints the same three totals and fails if the Brotli
+total passes 3 MB. The published files were also loaded from a plain static server
+(`tools/serve.cs`), not the development one: a load and its use were typed into the editor,
+stepped with F10 three times, and the log read `load-use: addi (ID) needs t0; lw (EX) has it
+only after MEM`.

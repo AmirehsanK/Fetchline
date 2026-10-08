@@ -38,7 +38,17 @@ dotnet run -c Release --project bench/Fetchline.Benchmarks -- --filter '*'   # t
 
 The playground is also the preview configuration `fetchline-web` in `D:\Git\.claude\launch.json`
 (outside this repository). Look at a change to it in a real browser before calling it done; the
-tests cover what is drawn, not how it looks.
+tests cover what is drawn, not how it looks. The development server does not pick up a rebuilt
+assembly: stop it, build, and start it again.
+
+```bash
+pwsh tools/site-size.ps1                                    # publish to artifacts/site and add up the download
+dotnet run tools/serve.cs -- ../artifacts/site/wwwroot 5196   # serve what was published (preview: fetchline-built)
+```
+
+`tools/serve.cs` is a single-file program, and `dotnet run` starts it in its own folder, which
+is why the path it is given begins with `..`. The download figures in `docs/CPU.md` 8.1 come
+from the first of these two; measure again after anything that changes what is shipped.
 
 `dotnet test` takes about twenty seconds here. Most of that is `EveryConfigurationTests`, which
 runs 2,000 random programs on all 64 correct configurations, in parallel; a failure there prints

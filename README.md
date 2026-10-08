@@ -6,8 +6,9 @@ Fetchline runs RV32IM programs on a five-stage pipeline and explains what the pi
 them: every stall, flush and forward is an event with a cause, drawn as the textbook diagram and
 written as a sentence. The same engine runs in the terminal, in the tests and in the browser.
 
-**Status: under construction.** The milestones and what each one has to prove are in
-[docs/SPEC.md](docs/SPEC.md); the table there is ticked as each section lands.
+**Status: under construction.** The command line and the engine are complete and verified; the
+browser playground runs, and is being filled in. The milestones and what each one has to prove
+are in [docs/SPEC.md](docs/SPEC.md); the list there is ticked as each section lands.
 
 ## Build
 
@@ -20,7 +21,15 @@ dotnet test
 
 ## Try it
 
-The command line works; the browser playground is not built yet.
+The playground is the same engine in the browser, on the screen of an old computer: an editor,
+the pipeline diagram with its forwards drawn in, the hazard log, registers, memory and counters,
+and a run you can step forwards and backwards.
+
+```bash
+dotnet run --project src/Fetchline.Web --launch-profile http
+```
+
+Then open <http://localhost:5195>. It is not published anywhere yet. The same thing in a terminal:
 
 ```bash
 dotnet run --project src/Fetchline.Cli -- trace examples/load-use.s

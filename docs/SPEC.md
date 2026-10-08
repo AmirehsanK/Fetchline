@@ -440,7 +440,7 @@ download size is measured and written down.
 - [x] 7.5 The hazard log, and jumping to the cycle of a line
 - [x] 7.6 The state panes: registers, memory, console and counters
 - [x] 7.7 The controls, the function keys and the start-up sequence
-- [ ] 7.8 Checked in a real browser; the download size measured and written down
+- [x] 7.8 Checked in a real browser; the download size measured and written down
 
 **M8. Datapath view, configuration, compare table, examples, share links, timeline.** Done when a
 link opened in a fresh profile shows the same cycle and the same numbers.
