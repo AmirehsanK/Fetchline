@@ -313,7 +313,7 @@ assembling a disassembled random word gives the word back, and every error has a
 - [x] 2.5 Encoding real instructions, with relocation operators
 - [x] 2.6 Pseudo-instructions
 - [x] 2.7 The source map and the listing
-- [ ] 2.8 The ELF32 writer and reader
+- [x] 2.8 The ELF32 writer and reader
 - [ ] 2.9 `fetchline asm` and `dis`, and the first examples
 - [ ] 2.10 Disassemble-then-assemble round trips on random words
 
