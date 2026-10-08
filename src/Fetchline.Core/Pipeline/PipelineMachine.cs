@@ -33,6 +33,10 @@ public sealed class PipelineMachine
     // instruction and occupies no stage; it takes effect once everything before it has completed.
     private Commit? _pendingEnd;
 
+    // An instruction that stops the machine has committed and is on its way to WB. Nothing more
+    // is fetched; the run ends in the cycle it leaves.
+    private bool _halting;
+
     public PipelineMachine(Program program, TextWriter? output = null, ExecutionEnvironment? environment = null)
     {
         Hart = new Hart(program, output, environment);
@@ -60,6 +64,8 @@ public sealed class PipelineMachine
 
         var hart = Hart;
         var x = hart.X;
+        var fetchingAllowed = !_halting;
+        Stopped = StopReason.None;      // a pause at an ebreak ends when the machine is stepped again
 
         // ---- WB: the result is written to its register -------------------------------------
         Commit? committed = null;
@@ -73,26 +79,45 @@ public sealed class PipelineMachine
             }
 
             committed = commit;
+            Stopped = commit.Stop;
             writeBackView = new StageView(Occupancy.Normal, _memWb.Seq, commit.Pc, commit.Instruction.Raw);
         }
 
         // ---- MEM: memory is read or written; this is the commit point ------------------------
         var nextMemWb = default(MemWb);
         var memoryView = default(StageView);
+        var redirect = false;
+        uint redirectTo = 0;
+        var flush = false;
         if (_exMem.Valid)
         {
             var commit = hart.Complete(
                 _exMem.Pc, _exMem.Instruction, _exMem.Rs1, _exMem.Rs2, _exMem.Alu, _exMem.Taken, _exMem.Target);
             nextMemWb = new MemWb(true, _exMem.Seq, commit);
             memoryView = new StageView(Occupancy.Normal, _exMem.Seq, _exMem.Pc, _exMem.Instruction.Raw);
+
+            // A system instruction, a trap or a stop changes what the instructions behind it
+            // should have seen, or whether they should run at all. All three of them are thrown
+            // away and fetched again from where this instruction says control goes. Because this
+            // happens here and nowhere earlier, a system call never runs on a wrong path, and an
+            // instruction that traps has changed nothing.
+            if (_exMem.Instruction.Control.System != SystemOp.None || commit.Trapped || commit.Stop != StopReason.None)
+            {
+                flush = true;
+                redirect = true;
+                redirectTo = commit.NextPc;
+                _halting = commit.Stop is not (StopReason.None or StopReason.Breakpoint);
+            }
         }
 
         // ---- EX: the ALU, and the branch decision --------------------------------------------
         var nextExMem = default(ExMem);
         var executeView = default(StageView);
-        var redirect = false;
-        uint redirectTo = 0;
-        if (_idEx.Valid)
+        if (_idEx.Valid && flush)
+        {
+            executeView = new StageView(Occupancy.Squashed, _idEx.Seq, _idEx.Pc, _idEx.Instruction.Raw);
+        }
+        else if (_idEx.Valid)
         {
             var instruction = _idEx.Instruction;
             var control = instruction.Control;
@@ -149,7 +174,7 @@ public sealed class PipelineMachine
 
         // ---- IF: read the next instruction ---------------------------------------------------
         var fetching = _heldFetch;
-        if (!fetching.Valid && _pendingEnd is null)
+        if (!fetching.Valid && _pendingEnd is null && fetchingAllowed)
         {
             if (hart.TryFetch(_pc, out var word, out var stop))
             {
@@ -167,7 +192,8 @@ public sealed class PipelineMachine
         {
             // A redirect outranks a stall: the instructions in ID and IF are from the wrong path,
             // so whether one of them was waiting no longer matters. Both are thrown away, and so
-            // is an end of the code that fetch may have run into on that path.
+            // is an end of the code that fetch may have run into on that path. A redirect from
+            // MEM outranks one from EX, whose instruction it has just thrown away as well.
             nextIdEx = default;
             nextIfId = default;
             _heldFetch = default;

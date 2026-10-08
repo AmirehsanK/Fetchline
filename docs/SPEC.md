@@ -347,7 +347,7 @@ official tests.
 - [x] 5.2 Forwarding
 - [x] 5.3 The load-use stall
 - [x] 5.4 Branches and jumps decided in EX
-- [ ] 5.5 System instructions and traps at the commit point
+- [x] 5.5 System instructions and traps at the commit point
 - [ ] 5.6 Cycle records and events
 - [ ] 5.7 The lockstep checker
 - [ ] 5.8 The staircase layout, the ASCII writer and `fetchline trace`, with golden diagrams
