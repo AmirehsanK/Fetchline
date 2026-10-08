@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+TestResults/
+BenchmarkDotNet.Artifacts/
+artifacts/
+publish/
+.DS_Store
+Thumbs.db
+
+# Knowledge-graph output from `/graphify`; regenerated from the sources on demand.
+graphify-out/

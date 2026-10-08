@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff2 binary
+# The official test programs are ELF files with no extension.
+tests/vectors/riscv-tests/elf/* binary
