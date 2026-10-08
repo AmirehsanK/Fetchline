@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>fetchline</AssemblyName>
+    <RootNamespace>Fetchline.Cli</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fetchline.Core\Fetchline.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The tests run commands in-process and compare what they print. -->
+    <InternalsVisibleTo Include="Fetchline.Tests" />
+  </ItemGroup>
+
+</Project>
