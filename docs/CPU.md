@@ -139,7 +139,7 @@ Windows 11.
 |---|---|
 | Reference machine, `examples/primes.s` (149,814 instructions) | 3.766 ms a run: 25 ns an instruction, 40 million instructions a second |
 | Decoding one word | 9.5 ns |
-| Assembling `examples/bubble-sort.s` (47 lines) | 22.5 µs, 64 KB allocated |
+| Assembling `examples/bubble-sort.s` (46 lines) | 22.5 µs, 64 KB allocated |
 
 The interpreter is not built for speed: every step produces a full commit record, because being
 comparable with the pipeline matters more here than being fast. Two things were worth doing
