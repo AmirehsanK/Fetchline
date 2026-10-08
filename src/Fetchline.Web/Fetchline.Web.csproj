@@ -20,4 +20,9 @@
     <ProjectReference Include="..\Fetchline.Viz\Fetchline.Viz.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The playground's examples are the files the tests run, not copies of them. -->
+    <EmbeddedResource Include="..\..\examples\*.s" LogicalName="Examples.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

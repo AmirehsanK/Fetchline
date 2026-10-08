@@ -105,9 +105,7 @@ body {
     overflow: hidden;
     isolation: isolate;
     border-radius: var(--curve) / calc(var(--curve) * 1.15);
-    background:
-        radial-gradient(90% 80% at 50% 45%, rgb(var(--halo) / 0.07) 0%, transparent 70%),
-        var(--unlit);
+    background: var(--unlit);
     box-shadow:
         0 0 0 3px var(--gasket),
         0 0 0 4px rgb(255 255 255 / 0.3),
@@ -124,7 +122,11 @@ body {
     background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / var(--scanline)) 2px 3px);
 }
 
-/* The glass itself: darker towards the corners, with the room's light faintly on it. */
+/*
+    The glass itself: a little brighter in the middle, darker towards the corners, with the
+    room's light faintly on it. All of it lies over what is drawn, so that anything drawn can
+    have the plain unlit colour behind it and still match its surroundings.
+*/
 .tube::after {
     content: "";
     position: absolute;
@@ -133,6 +135,7 @@ body {
     pointer-events: none;
     background:
         linear-gradient(125deg, rgb(255 255 255 / 0.05) 0%, transparent 28%),
+        radial-gradient(90% 80% at 50% 45%, rgb(var(--halo) / 0.05) 0%, transparent 70%),
         radial-gradient(120% 100% at 50% 50%, transparent 55%, rgb(0 0 0 / 0.5) 100%);
     animation: flicker 6s steps(1, end) infinite;
 }
@@ -205,6 +208,262 @@ body {
 @keyframes blink {
     0%, 49% { opacity: 1; }
     50%, 100% { opacity: 0; }
+}
+
+/* ---- What the tube shows: a status line, panes, soft keys ------------------------------------ */
+
+/*
+    Sizes on the tube are counted in characters and lines, as on a terminal: 1ch across and 1lh
+    down. On a screen that can hold it the desk fills the glass and the panes scroll inside it.
+*/
+.desk {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "status" "source" "keys" "pipeline";
+    gap: 0.9lh 2ch;
+}
+
+.status {
+    grid-area: status;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 2ch;
+    color: var(--bright);
+}
+
+.status-end {
+    margin-left: auto;
+}
+
+@media (min-width: 900px) and (min-height: 560px) {
+    .glass:has(> .desk) {
+        overflow: hidden;
+    }
+
+    .desk {
+        height: 100%;
+        grid-template-columns: minmax(40ch, 34%) minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        grid-template-areas:
+            "status status"
+            "source pipeline"
+            "keys   keys";
+    }
+}
+
+/* A pane is a box with its name set into the top edge. */
+.pane {
+    position: relative;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    min-width: 0;
+    min-height: 0;
+    padding: 0.6lh 1ch 0.3lh;
+    border: 1px solid var(--dim);
+}
+
+.pane-title {
+    position: absolute;
+    top: -0.55lh;
+    left: 1.5ch;
+    margin: 0;
+    padding: 0 1ch;
+    background: var(--unlit);
+    font: inherit;
+}
+
+.pane-body {
+    min-height: 0;
+    overflow: auto;
+    scrollbar-color: var(--dim) transparent;
+    scrollbar-width: thin;
+}
+
+.source {
+    grid-area: source;
+    grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.pipeline {
+    grid-area: pipeline;
+}
+
+/* ---- The editor --------------------------------------------------------------------------------- */
+
+/* On a small screen the editor is as tall as a short program and scrolls beyond that. */
+.editor {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    /* One row, at least as tall as the pane: the gutter's rule and the place to type reach the foot. */
+    grid-template-rows: minmax(100%, auto);
+    min-height: 0;
+    max-height: 60dvh;
+    overflow: auto;
+    scrollbar-color: var(--dim) transparent;
+    scrollbar-width: thin;
+}
+
+@media (min-width: 900px) and (min-height: 560px) {
+    .editor {
+        max-height: none;
+    }
+}
+
+/* The gutter stays put when a long line is scrolled sideways. */
+.gutter {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    margin-right: 1ch;
+    padding-right: 1ch;
+    border-right: 1px solid var(--dim);
+    background: var(--unlit);
+    color: var(--dim);
+    user-select: none;
+}
+
+.mark {
+    color: var(--bright);
+}
+
+.mark.squashed {
+    color: var(--dim);
+    text-decoration: line-through;
+}
+
+.code {
+    position: relative;
+    min-width: max-content;
+}
+
+.paint {
+    white-space: pre;
+}
+
+/*
+    The textarea lies exactly over the paint and is exactly its size, so it never scrolls on its
+    own; its text is there, to be typed and selected, but only its caret is seen.
+*/
+.input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    resize: none;
+    overflow: hidden;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--bright);
+    caret-shape: block;
+    font: inherit;
+    text-shadow: none;
+    white-space: pre;
+    tab-size: 8;
+}
+
+.glass .input:focus-visible {
+    outline: none;
+}
+
+.source:focus-within {
+    border-color: var(--ink);
+}
+
+.input::selection {
+    background: rgb(var(--halo) / 0.32);
+    color: transparent;
+}
+
+.ink-comment {
+    color: var(--dim);
+}
+
+.ink-keyword {
+    color: var(--bright);
+}
+
+.ink-label {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* What the assembler objects to. The line also carries a mark in the gutter. */
+.flagged {
+    text-decoration: underline wavy var(--bright);
+    text-decoration-skip-ink: none;
+    text-underline-offset: 3px;
+}
+
+.problems {
+    margin: 0.4lh 0 0;
+    padding: 0.3lh 0 0;
+    border-top: 1px solid var(--dim);
+    list-style: none;
+}
+
+.problem {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    text-shadow: inherit;
+    cursor: pointer;
+}
+
+.problem:hover {
+    color: var(--bright);
+}
+
+/* ---- Soft keys ---------------------------------------------------------------------------------- */
+
+.softkeys {
+    grid-area: keys;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4lh 2ch;
+}
+
+.softkey {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    text-shadow: inherit;
+    cursor: pointer;
+}
+
+.softkey-name {
+    display: inline-block;
+    padding: 0 1ch;
+}
+
+.softkey:hover .softkey-name {
+    background: var(--bright);
+}
+
+/* A key that can do nothing now is still there, unlit: an outline where the lit block was. */
+.softkey:disabled {
+    cursor: default;
+}
+
+.softkey:disabled .softkey-name {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--dim);
+    color: var(--dim);
+}
+
+@media (pointer: coarse) {
+    .softkey-name {
+        padding: 0.45lh 1.5ch;
+    }
 }
 
 /* ---- Before the engine has loaded, and if it falls over -------------------------------------- */

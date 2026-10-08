@@ -1,23 +1,91 @@
+@using Fetchline.Viz.Editor
 @using Fetchline.Viz.Explain
 @using Fetchline.Viz.Export
 
 @*
-    What the tube shows. For now that is one thing: the textbook load-use sequence, assembled and
-    run by the engine in the browser, and drawn by the same code that draws it in a terminal.
+    What the tube shows: a status line, the panes, and a row of soft keys. All of it is drawn
+    from one Session, which is replaced by a new one whenever the source changes.
 *@
-<pre class="readout"><span class="bright">RV32IM READY</span>
+<div class="desk">
+    <header class="status">
+        <span class="inverse">&nbsp;FETCHLINE&nbsp;</span>
+        <span>@SwitchNames.Of(_session.Config)</span>
+        <span class="status-end">@Standing</span>
+    </header>
 
-@_trace</pre>
+    <SourcePane View="_source" Record="_session.Record" OnEdit="Edit" />
+
+    <section class="pane pipeline" aria-label="Pipeline">
+        <h2 class="pane-title">PIPELINE</h2>
+        <pre class="pane-body" tabindex="0">@Trace</pre>
+    </section>
+
+    <footer class="softkeys" role="toolbar" aria-label="Run">
+        <button type="button" class="softkey" disabled="@(!_session.CanStep)" @onclick="Run">
+            <span class="softkey-name inverse">RUN</span>
+        </button>
+        <button type="button" class="softkey" disabled="@(!_session.CanStep)" @onclick="Step">
+            <span class="softkey-name inverse">STEP</span>
+        </button>
+        <button type="button" class="softkey" disabled="@(!_session.CanStepBack)" @onclick="Back">
+            <span class="softkey-name inverse">BACK</span>
+        </button>
+        <button type="button" class="softkey" disabled="@(!_session.CanStepBack)" @onclick="Reset">
+            <span class="softkey-name inverse">RESET</span>
+        </button>
+    </footer>
+</div>
 
 @code {
-    private const string LoadUse = "lw   x4, 0(x2)\nadd  x5, x4, x6\nsub  x7, x5, x4\n";
+    // A run with no end is stopped after this many cycles; RUN again carries on.
+    private const int MostCyclesAtOnce = 200_000;
 
-    private string _trace = string.Empty;
+    // How many cycles the diagram shows: the cycle on screen and the ones leading up to it.
+    private const ulong Window = 24;
 
-    protected override void OnInitialized()
+    private static readonly IMessages Messages = EnglishMessages.Instance;
+
+    private Session _session = default!;
+    private SourceView _source = default!;
+
+    protected override void OnInitialized() => Edit(Examples.Read("load-use.s"));
+
+    private void Edit(string text)
     {
-        var session = new Session(LoadUse);
-        session.Seek(ulong.MaxValue);
-        _trace = AsciiTrace.Write(session.Program!, session.Records(1, session.Cycle), EnglishMessages.Instance);
+        _session = new Session(text, _session?.Config);
+        _source = SourceView.Of(_session.Assembly);
+    }
+
+    private void Run() => _session.Run(MostCyclesAtOnce);
+
+    private void Step() => _session.Step();
+
+    private void Back() => _session.StepBack();
+
+    private void Reset() => _session.Reset();
+
+    private string Standing =>
+        _session.Program is null ? "NOTHING TO RUN"
+        : _session.IsFinished ? $"CYCLE {_session.Cycle}  ENDED"
+        : $"CYCLE {_session.Cycle}";
+
+    private string Trace
+    {
+        get
+        {
+            if (_session.Program is not { } program)
+            {
+                return "The source has to assemble before it can run.\nWhat is wrong with it is listed under the source.";
+            }
+
+            if (_session.Cycle == 0)
+            {
+                return "RV32IM READY\n\nSTEP runs one cycle. RUN goes to the end.";
+            }
+
+            var from = _session.Cycle > Window ? _session.Cycle - Window + 1 : 1;
+            var records = _session.Records(from, _session.Cycle);
+            return AsciiTrace.Write(program, records, Messages, new TraceOptions { From = from, Cycles = Window }, _session.Divergence);
+        }
     }
 }

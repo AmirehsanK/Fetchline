@@ -1,0 +1,164 @@
+@using Fetchline.Core.Asm
+@using Fetchline.Viz.Editor
+@using Microsoft.AspNetCore.Components.Rendering
+@inject IJSRuntime Js
+
+@*
+    The editor. The reader types into a plain textarea whose own text is invisible; behind it the
+    same text is painted in pieces, cut up by the assembler's lexer, so what is typed and what is
+    seen can never differ by more than their colours. Beside it is the gutter: the address each
+    line was assembled at, and the stages its instructions are in during the cycle shown.
+*@
+<section class="pane source" aria-label="Source">
+    <h2 class="pane-title">SOURCE</h2>
+    <div class="editor">
+        <pre class="gutter" aria-hidden="true">@Gutter</pre>
+        <div class="code">
+            <pre class="paint" aria-hidden="true">@Paint</pre>
+            <textarea class="input" @ref="_input" aria-label="Assembly source"
+                      spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"
+                      value="@View.Source" @oninput="Typed"></textarea>
+        </div>
+    </div>
+    @if (View.Diagnostics.Count > 0)
+    {
+        <ol class="problems" aria-label="Problems">
+            @foreach (var problem in View.Diagnostics.Take(MostProblems))
+            {
+                <li>
+                    <button type="button" class="problem" @onclick="() => Show(problem)">
+                        <span class="inverse">@problem.Span.Line:@problem.Span.Column</span>
+                        @problem.Message@(problem.Hint is null ? string.Empty : " — " + problem.Hint)
+                    </button>
+                </li>
+            }
+            @if (View.Diagnostics.Count > MostProblems)
+            {
+                <li class="dim">and @(View.Diagnostics.Count - MostProblems) more</li>
+            }
+        </ol>
+    }
+</section>
+
+@code {
+    private const int MostProblems = 4;
+
+    // The gutter's last column: room for an instruction that became two, each in its own stage.
+    private const int MarksWidth = 6;
+
+    private ElementReference _input;
+
+    /// <summary>The source, cut up for drawing.</summary>
+    [Parameter, EditorRequired]
+    public SourceView View { get; set; } = default!;
+
+    /// <summary>The cycle being shown, for the gutter; null at reset.</summary>
+    [Parameter]
+    public CycleRecord? Record { get; set; }
+
+    /// <summary>Called with the whole text every time it changes.</summary>
+    [Parameter]
+    public EventCallback<string> OnEdit { get; set; }
+
+    private Task Typed(ChangeEventArgs change) => OnEdit.InvokeAsync(change.Value as string ?? string.Empty);
+
+    /// <summary>Puts the caret on the text a problem is about.</summary>
+    private async Task Show(Diagnostic problem) =>
+        await Js.InvokeVoidAsync("fetchlineEditor.select", _input, problem.Span.Start, problem.Span.Start + problem.Span.Length);
+
+    private RenderFragment Paint => builder =>
+    {
+        foreach (var line in View.Lines)
+        {
+            foreach (var run in line.Runs)
+            {
+                var style = StyleOf(run);
+                if (style is null)
+                {
+                    builder.AddContent(0, View.Text(run.Start, run.Length));
+                    continue;
+                }
+
+                builder.OpenElement(1, "span");
+                builder.AddAttribute(2, "class", style);
+                builder.AddContent(3, View.Text(run.Start, run.Length));
+                builder.CloseElement();
+            }
+
+            // Every line ends with a break, the last included: a pre leaves out a final empty
+            // line, and then the paint would be one line shorter than the textarea over it.
+            builder.AddContent(4, "\n");
+        }
+    };
+
+    private RenderFragment Gutter => builder =>
+    {
+        var stages = View.Stages(Record);
+        foreach (var line in View.Lines)
+        {
+            if (line.HasProblem)
+            {
+                builder.OpenElement(0, "span");
+                builder.AddAttribute(1, "class", "inverse");
+                builder.AddContent(2, "!");
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.AddContent(3, " ");
+            }
+
+            builder.AddContent(4, line.Address is { } address
+                ? address.ToString("x", CultureInfo.InvariantCulture).PadLeft(View.AddressDigits, '0')
+                : new string(' ', View.AddressDigits));
+            builder.AddContent(5, " ");
+
+            var written = 0;
+            if (stages.TryGetValue(line.Number, out var marks))
+            {
+                foreach (var mark in marks)
+                {
+                    var name = Fetchline.Viz.Export.AsciiTrace.Name(mark.Stage);
+                    if (written + name.Length + (written > 0 ? 1 : 0) > MarksWidth)
+                    {
+                        break;
+                    }
+
+                    if (written > 0)
+                    {
+                        builder.AddContent(6, " ");
+                        written++;
+                    }
+
+                    builder.OpenElement(7, "span");
+                    builder.AddAttribute(8, "class", mark.State switch
+                    {
+                        Occupancy.Held => "mark inverse",
+                        Occupancy.Squashed => "mark squashed",
+                        _ => "mark",
+                    });
+                    builder.AddContent(9, name);
+                    builder.CloseElement();
+                    written += name.Length;
+                }
+            }
+
+            builder.AddContent(10, new string(' ', MarksWidth - written) + "\n");
+        }
+    };
+
+    /// <summary>The class a run is painted with, or null for text that needs none.</summary>
+    private static string? StyleOf(SourceRun run)
+    {
+        var ink = run.Ink switch
+        {
+            Ink.Comment => "ink-comment",
+            Ink.Mnemonic or Ink.Directive => "ink-keyword",
+            Ink.Label => "ink-label",
+            Ink.Wrong => "inverse",
+            _ => null,
+        };
+
+        return run.Flagged ? (ink is null ? "flagged" : ink + " flagged") : ink;
+    }
+}

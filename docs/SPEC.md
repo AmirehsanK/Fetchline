@@ -407,7 +407,7 @@ download size is measured and written down.
 
 - [x] 7.1 The session: assemble, step, step back, run and reset, with no user interface in it
 - [x] 7.2 The Blazor WebAssembly project and the display: bezel, phosphor, the plain switch
-- [ ] 7.3 The editor: the assembler's own lexer for highlighting, its diagnostics, the gutter
+- [x] 7.3 The editor: the assembler's own lexer for highlighting, its diagnostics, the gutter
 - [ ] 7.4 The staircase as a character grid, with held and squashed marks and forwarding arrows
 - [ ] 7.5 The hazard log, and jumping to the cycle of a line
 - [ ] 7.6 The state panes: registers, memory, console and counters
