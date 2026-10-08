@@ -307,7 +307,7 @@ round-trips over random fields and every match and mask equals the `riscv-opcode
 assembling a disassembled random word gives the word back, and every error has a line and column.
 
 - [x] 2.1 Diagnostics and the lexer
-- [ ] 2.2 Expressions
+- [x] 2.2 Expressions
 - [ ] 2.3 The statement parser: labels, directives, operands
 - [ ] 2.4 `Program`, sections and the layout pass
 - [ ] 2.5 Encoding real instructions, with relocation operators
