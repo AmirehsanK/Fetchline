@@ -1,0 +1,106 @@
+@using Fetchline.Viz.Explain
+@inject IJSRuntime Js
+
+@*
+    The hazard log: each thing the pipeline did, as a sentence. A line is a button: choosing it
+    shows the cycle it happened in, on every pane. Lines for cycles after the one on screen are
+    still listed, dimmer, so that the way forward is here too after the run has been stepped back.
+*@
+<section class="pane log" aria-label="What happened">
+    <h2 class="pane-title">LOG</h2>
+    <div class="pane-body" @ref="_scroller">
+        @if (_lines.Count == 0)
+        {
+            <p class="dim log-empty">@(Session.Program is null || Session.Frontier == 0 ? string.Empty : Messages.NothingHappened)</p>
+        }
+        else
+        {
+            <ol class="log-lines" style="--log-indent: @(_cycleWidth + 2 + 8 + 1)ch">
+                @foreach (var line in _lines)
+                {
+                    <li>
+                        <button type="button" class="@Style(line)" aria-current="@(line.Cycle == Session.Cycle ? "true" : null)"
+                                @onclick="() => OnSeek.InvokeAsync(line.Cycle)">@Text(line)</button>
+                    </li>
+                }
+            </ol>
+        }
+    </div>
+</section>
+
+@code {
+    // How far either side of the cycle on screen the log reaches. A long run has more lines
+    // than anyone will read; the ones near what is being looked at are the ones wanted.
+    private const ulong Span = 150;
+
+    private ElementReference _scroller;
+    private List<LogLine> _lines = [];
+    private Session? _listedFor;
+    private ulong _listedAt = ulong.MaxValue;
+    private ulong _listedTo = ulong.MaxValue;
+    private int _cycleWidth = 2;
+    private bool _follow;
+
+    [Parameter, EditorRequired]
+    public Session Session { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public InstructionLabels? Labels { get; set; }
+
+    [Parameter, EditorRequired]
+    public IMessages Messages { get; set; } = default!;
+
+    /// <summary>Called with the cycle of a line when the line is chosen.</summary>
+    [Parameter]
+    public EventCallback<ulong> OnSeek { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_listedFor, Session) && _listedAt == Session.Cycle && _listedTo == Session.Frontier)
+        {
+            return;
+        }
+
+        (_listedFor, _listedAt, _listedTo, _follow) = (Session, Session.Cycle, Session.Frontier, true);
+        if (Session.Program is null || Labels is null)
+        {
+            _lines = [];
+            return;
+        }
+
+        // What has been run is listed, the cycles after the one on screen included; so the first
+        // wrong value is listed too once the run has come to it, wherever the screen is now.
+        var from = Session.Cycle > Span ? Session.Cycle - Span : 1;
+        var records = Session.Recorded(from, Session.Cycle + Span);
+        _lines = HazardLog.Build(records, Labels, Messages, Session.DivergenceSoFar);
+        _cycleWidth = 1 + (records.Count == 0 ? 1 : records[^1].Cycle.ToString(CultureInfo.InvariantCulture).Length);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_follow)
+        {
+            _follow = false;
+            await Js.InvokeVoidAsync("fetchlineLog.follow", _scroller);
+        }
+    }
+
+    private string Style(LogLine line) =>
+        line.Cycle == Session.Cycle ? "log-line log-now"
+        : line.Cycle > Session.Cycle ? "log-line log-ahead"
+        : "log-line";
+
+    // The same columns as the terminal's trace: the cycle, the kind of thing, the sentence.
+    private string Text(LogLine line)
+    {
+        var kind = line.Kind switch
+        {
+            LogKind.Stall => Messages.Stall,
+            LogKind.Forward => Messages.Forward,
+            LogKind.Flush => Messages.Flush,
+            LogKind.Wrong => Messages.Wrong,
+            _ => Messages.Trap,
+        };
+        return ("c" + line.Cycle.ToString(CultureInfo.InvariantCulture)).PadRight(_cycleWidth) + "  " + kind.PadRight(8) + " " + line.Text;
+    }
+}

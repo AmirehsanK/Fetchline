@@ -16,6 +16,8 @@
 
     <PipelinePane Session="_session" Labels="_labels" Messages="Messages" />
 
+    <LogPane Session="_session" Labels="_labels" Messages="Messages" OnSeek="Seek" />
+
     <footer class="softkeys" role="toolbar" aria-label="Run">
         <button type="button" class="softkey" disabled="@(!_session.CanStep)" @onclick="Run">
             <span class="softkey-name inverse">RUN</span>
@@ -58,6 +60,8 @@
     private void Back() => _session.StepBack();
 
     private void Reset() => _session.Reset();
+
+    private void Seek(ulong cycle) => _session.Seek(cycle);
 
     private string Standing =>
         _session.Program is null ? "NOTHING TO RUN"

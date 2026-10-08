@@ -8,6 +8,34 @@ window.fetchlineEditor = {
     },
 };
 
+window.fetchlineLog = {
+    // Keeps the lines of the cycle on screen in view: the last of them, or failing that the
+    // last line before them. Only the log itself is scrolled, never the page around it.
+    follow: function (scroller) {
+        if (!scroller) {
+            return;
+        }
+
+        var lines = scroller.querySelectorAll('.log-now');
+        if (!lines.length) {
+            lines = scroller.querySelectorAll('.log-line:not(.log-ahead)');
+        }
+
+        if (!lines.length) {
+            scroller.scrollTop = 0;
+            return;
+        }
+
+        var frame = scroller.getBoundingClientRect();
+        var line = lines[lines.length - 1].getBoundingClientRect();
+        if (line.bottom > frame.bottom) {
+            scroller.scrollTop += line.bottom - frame.bottom;
+        } else if (line.top < frame.top) {
+            scroller.scrollTop -= frame.top - line.top;
+        }
+    },
+};
+
 window.fetchlineStaircase = (function () {
     'use strict';
 

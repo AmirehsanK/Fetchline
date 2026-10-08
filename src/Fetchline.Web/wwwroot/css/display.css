@@ -219,7 +219,7 @@ body {
 .desk {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "status" "source" "keys" "pipeline";
+    grid-template-areas: "status" "source" "keys" "pipeline" "log";
     gap: 0.9lh 2ch;
 }
 
@@ -243,10 +243,11 @@ body {
     .desk {
         height: 100%;
         grid-template-columns: minmax(40ch, 34%) minmax(0, 1fr);
-        grid-template-rows: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto minmax(0, 1.7fr) minmax(0, 1fr) auto;
         grid-template-areas:
             "status status"
             "source pipeline"
+            "source log"
             "keys   keys";
     }
 }
@@ -347,6 +348,65 @@ body {
 /* The line of a forward is the brightest thing in the diagram: it is what there is to see. */
 .wire {
     color: var(--bright);
+}
+
+/* ---- The hazard log -------------------------------------------------------------------------------- */
+
+.log {
+    grid-area: log;
+}
+
+/* On a small screen the log is a few lines tall and scrolls; on a large one it fills its pane. */
+.log .pane-body {
+    max-height: 12lh;
+}
+
+@media (min-width: 900px) and (min-height: 560px) {
+    .log .pane-body {
+        max-height: none;
+    }
+}
+
+.log-lines {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.log-empty {
+    margin: 0;
+}
+
+/*
+    A line is a button that goes to its cycle. A long sentence wraps under itself, clear of the
+    two columns before it.
+*/
+.log-line {
+    display: block;
+    width: 100%;
+    padding: 0 0 0 var(--log-indent, 0);
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    text-indent: calc(-1 * var(--log-indent, 0));
+    text-shadow: inherit;
+    white-space: pre-wrap;
+    cursor: pointer;
+}
+
+.log-line:hover {
+    background: rgb(var(--halo) / 0.13);
+}
+
+/* What happened in the cycle on screen is lit; what happens after it is still to come. */
+.log-now {
+    color: var(--bright);
+}
+
+.log-ahead {
+    color: var(--dim);
 }
 
 .stair-legend {

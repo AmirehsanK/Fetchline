@@ -95,6 +95,12 @@ public sealed class Session
     /// </summary>
     public Divergence? Divergence => _lockstep?.Divergence is { } divergence && divergence.Cycle <= Cycle ? divergence : null;
 
+    /// <summary>
+    /// The first wrong value the run has come to so far, even when the cycle being shown is
+    /// before it: for a list of what has been run, as <see cref="Recorded"/> is.
+    /// </summary>
+    public Divergence? DivergenceSoFar => _lockstep?.Divergence;
+
     /// <summary>The integer registers after the cycle being shown.</summary>
     public ReadOnlySpan<uint> Registers => _registers;
 
@@ -126,6 +132,18 @@ public sealed class Session
     {
         from = Math.Max(from, _first);
         to = Math.Min(to, Cycle);
+        return from > to ? [] : _records.GetRange((int)(from - _first), (int)(to - from + 1));
+    }
+
+    /// <summary>
+    /// The records of the cycles from <paramref name="from"/> to <paramref name="to"/> that have
+    /// been run and are still held, those after the cycle being shown included. A list of what
+    /// happened can then offer a way forward again after the run has been stepped back.
+    /// </summary>
+    public IReadOnlyList<CycleRecord> Recorded(ulong from, ulong to)
+    {
+        from = Math.Max(from, _first);
+        to = Math.Min(to, Frontier);
         return from > to ? [] : _records.GetRange((int)(from - _first), (int)(to - from + 1));
     }
 

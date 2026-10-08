@@ -212,7 +212,7 @@ public class TraceTests
                 new LogLine(6, LogKind.Forward, "EX/MEM -> EX.A   x5 from add", Seq: 3, Other: 2),
             ],
             lines);
-        Assert.Equal(["stall", "forward", "flush", "trap"], Enum.GetValues<LogKind>().Select(explainer.Label));
+        Assert.Equal(["stall", "forward", "flush", "trap", "wrong"], Enum.GetValues<LogKind>().Select(explainer.Label));
     }
 
     [Fact]

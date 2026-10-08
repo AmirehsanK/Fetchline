@@ -10,6 +10,9 @@ public enum LogKind : byte
     Forward,
     Flush,
     Trap,
+
+    /// <summary>The pipeline did something else than the reference machine: the first wrong value.</summary>
+    Wrong,
 }
 
 /// <summary>One line of the hazard log: something the pipeline did, said as a sentence.</summary>
@@ -166,6 +169,7 @@ public sealed class Explainer(StaircaseLayout layout, InstructionLabels labels, 
         LogKind.Stall => Messages.Stall,
         LogKind.Forward => Messages.Forward,
         LogKind.Flush => Messages.Flush,
+        LogKind.Wrong => Messages.Wrong,
         _ => Messages.Trap,
     };
 

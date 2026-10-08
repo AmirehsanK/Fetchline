@@ -21,6 +21,12 @@ public interface IMessages
     /// <summary>The label of a trap in the log.</summary>
     string Trap { get; }
 
+    /// <summary>The label of the first wrong value in the log.</summary>
+    string Wrong { get; }
+
+    /// <summary>What the log says when a run has had nothing to report.</summary>
+    string NothingHappened { get; }
+
     /// <summary>The consumer is held in ID because the load ahead of it has not read its value yet.</summary>
     string LoadUse(string consumer, string register, string producer);
 
@@ -148,6 +154,10 @@ public sealed class EnglishMessages : IMessages
     public string Flush => "flush";
 
     public string Trap => "trap";
+
+    public string Wrong => "wrong";
+
+    public string NothingHappened => "No stalls, forwards or flushes yet.";
 
     public string LoadUse(string consumer, string register, string producer) =>
         $"load-use: {consumer} (ID) needs {register}; {producer} (EX) has it only after MEM";

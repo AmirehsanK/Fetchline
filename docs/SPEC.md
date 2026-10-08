@@ -253,7 +253,11 @@ running again from reset, which gives the same run because the machine has no ot
 - **Datapath:** an SVG of the five stages, latches, multiplexers, ALU, forwarding unit and hazard
   unit. The paths active in the current cycle light up, with values on hover. It is described as
   data (nodes, wires, ids), not drawn by hand in markup.
-- **Hazard log:** each event as a sentence; clicking one jumps to its cycle.
+- **Hazard log:** each event as a sentence; clicking one jumps to its cycle. It lists what has
+  been run, the cycles after the one on screen included, dimmer, so that after stepping back it is
+  also the way forward again. With hazard handling off the first wrong value is one of its lines.
+  Any stretch of a run can be explained on its own, because whatever an event is about was in
+  the pipeline in the cycle of the event.
 - **State:** registers with ABI names, memory, console, and counters (cycles, CPI, stalls and
   flushes by cause, forwards by path, prediction accuracy).
 - **Controls:** assemble, step, step back, run with a speed slider, and a timeline to scrub. Step
@@ -415,7 +419,7 @@ download size is measured and written down.
 - [x] 7.2 The Blazor WebAssembly project and the display: bezel, phosphor, the plain switch
 - [x] 7.3 The editor: the assembler's own lexer for highlighting, its diagnostics, the gutter
 - [x] 7.4 The staircase as a character grid, with held and squashed marks and forwarding arrows
-- [ ] 7.5 The hazard log, and jumping to the cycle of a line
+- [x] 7.5 The hazard log, and jumping to the cycle of a line
 - [ ] 7.6 The state panes: registers, memory, console and counters
 - [ ] 7.7 The controls, the function keys and the start-up sequence
 - [ ] 7.8 Checked in a real browser; the download size measured and written down
