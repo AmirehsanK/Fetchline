@@ -36,7 +36,7 @@ window.fetchlineKeys = {
     // alone, so Ctrl+F5 still reloads the page; and only stepping repeats when a key is held.
     listen: function (listener) {
         var repeats = { F9: true, F10: true };
-        var keys = { F2: true, F5: true, F6: true, F7: true, F8: true, F9: true, F10: true };
+        var keys = { F2: true, F4: true, F5: true, F6: true, F7: true, F8: true, F9: true, F10: true };
 
         window.addEventListener('keydown', function (event) {
             if (!keys[event.key] || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {

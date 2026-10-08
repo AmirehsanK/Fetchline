@@ -252,7 +252,11 @@ running again from reset, which gives the same run because the machine has no ot
   and on a narrow screen labels an instruction by its mnemonic alone.
 - **Datapath:** an SVG of the five stages, latches, multiplexers, ALU, forwarding unit and hazard
   unit. The paths active in the current cycle light up, with values on hover. It is described as
-  data (nodes, wires, ids), not drawn by hand in markup.
+  data (nodes, wires, ids), not drawn by hand in markup. `F4` shows it in place of the staircase
+  and brings the staircase back. It is the datapath of the pipeline as the switches build it: no
+  forwarding unit when hazards are handled by stalling, branch logic in ID when branches are
+  decided there. Under each stage is the instruction in it, marked as the staircase marks one
+  that is held or thrown away.
 - **Hazard log:** each event as a sentence; clicking one jumps to its cycle. It lists what has
   been run, the cycles after the one on screen included, dimmer, so that after stepping back it is
   also the way forward again. With hazard handling off the first wrong value is one of its lines.
@@ -467,7 +471,7 @@ link opened in a fresh profile shows the same cycle and the same numbers.
 
 - [x] 8.1 The configuration panel: the what-if switches
 - [x] 8.2 The datapath as data, and the paths that are active in a cycle
-- [ ] 8.3 The datapath drawn, with values on hover
+- [x] 8.3 The datapath drawn, with values on hover
 - [x] 8.4 The compare table
 - [x] 8.5 The examples menu
 - [x] 8.6 The share codec, held to malformed and oversized input, and links that use it

@@ -90,10 +90,19 @@ body {
         0 18px 50px rgb(0 0 0 / 0.6);
 }
 
-/* On a screen big enough to hold it, the monitor is the window and its panes scroll inside it. */
+/*
+    On a wide screen the monitor is the size of the window and no more: the panes share what
+    there is and scroll inside themselves, however much they would like.
+*/
 @media (min-width: 1200px) and (min-height: 600px) {
     body {
         height: 100dvh;
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .monitor,
+    .tube {
+        min-height: 0;
     }
 }
 
@@ -465,6 +474,127 @@ body {
 /* The line of a forward is the brightest thing in the diagram: it is what there is to see. */
 .wire {
     color: var(--bright);
+}
+
+/* ---- The datapath --------------------------------------------------------------------------------- */
+
+/*
+    Thin lines of one colour, as a vector display draws: the wires nothing is using are dim, the
+    ones in use this cycle are the bright ones. It keeps its shape and is scrolled when the pane
+    is narrower than it can be read at.
+*/
+.datapath {
+    min-height: 6lh;
+    overflow: auto;
+    scrollbar-color: var(--dim) transparent;
+    scrollbar-width: thin;
+}
+
+.datapath svg {
+    display: block;
+    width: 100%;
+    min-width: 600px;
+    max-height: 100%;
+    font: 9px var(--mono);
+}
+
+/*
+    Where the panes share out a screen of a fixed size, the drawing takes the room its pane has
+    and asks for none of its own.
+*/
+@media (min-width: 1200px) and (min-height: 600px) {
+    .datapath {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .datapath svg {
+        position: absolute;
+        inset: 0;
+        min-width: 0;
+        height: 100%;
+    }
+}
+
+.dp-wire {
+    fill: none;
+    stroke: var(--dim);
+    stroke-width: 0.8;
+    stroke-linejoin: round;
+    opacity: 0.55;
+}
+
+.dp-wire.dp-control {
+    stroke-dasharray: 3 2;
+}
+
+.dp-wire.dp-active {
+    stroke: var(--bright);
+    stroke-width: 1.5;
+    opacity: 1;
+    filter: drop-shadow(0 0 var(--glow) rgb(var(--halo) / 0.7));
+}
+
+.dp-wire.dp-pointed {
+    stroke-width: 2.4;
+    opacity: 1;
+}
+
+/* Nothing to see, and wide enough to point at. */
+.dp-hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 7;
+    pointer-events: stroke;
+    cursor: crosshair;
+}
+
+.dp-part rect,
+.dp-part polygon {
+    fill: var(--unlit);
+    stroke: var(--dim);
+    stroke-width: 1;
+}
+
+.dp-part text,
+.dp-stage,
+.dp-caption {
+    fill: var(--dim);
+    stroke: none;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+.dp-part .dp-latch {
+    font-size: 7px;
+}
+
+.dp-working rect,
+.dp-working polygon {
+    stroke: var(--ink);
+    stroke-width: 1.4;
+}
+
+.dp-working text {
+    fill: var(--bright);
+}
+
+.dp-caption {
+    fill: var(--ink);
+}
+
+/* Held and thrown away, as the diagram marks them: inverse video, and struck out. */
+.dp-held-cell {
+    fill: var(--ink);
+}
+
+.dp-caption.dp-held {
+    fill: var(--unlit);
+}
+
+.dp-caption.dp-squashed {
+    fill: var(--dim);
+    text-decoration: line-through;
 }
 
 /* ---- Registers, memory, console, counters ----------------------------------------------------------- */
@@ -1107,6 +1237,10 @@ body {
 :root[data-plain] .inverse {
     text-shadow: none;
     box-shadow: none;
+}
+
+:root[data-plain] .dp-wire {
+    filter: none;
 }
 
 :root[data-plain] *,

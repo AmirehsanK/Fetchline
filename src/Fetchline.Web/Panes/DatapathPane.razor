@@ -1,0 +1,179 @@
+@using Fetchline.Core.Isa
+@using Fetchline.Viz.Datapath
+@using Fetchline.Viz.Explain
+
+@*
+    The datapath, drawn from DatapathModel: every part and every wire here is one the model
+    lists, at the place the model gives it. Which are bright is said by DatapathView. This
+    component only chooses a shape for each kind of part and says what is pointed at.
+*@
+<section class="pane pipeline" aria-label="@Messages.DatapathTitle">
+    <h2 class="pane-title">@Messages.DatapathTitle</h2>
+    <div class="datapath">
+        <svg viewBox="0 0 @DatapathModel.Width @DatapathModel.Height" role="img" aria-label="@Messages.DatapathTitle">
+            @* Wires that are not in use first, so that a bright one sharing a stretch lies on top. *@
+            @foreach (var reading in _view.Wires.OrderBy(reading => reading.Active))
+            {
+                var id = reading.Wire.Id;
+                <polyline @key="@("w:" + id)" class="@LineClass(reading)" points="@Points(reading.Wire)" />
+            }
+
+            @foreach (var part in _view.Model.Parts)
+            {
+                <g @key="@("p:" + part.Id)" class="@(_view.IsWorking(part.Id) ? "dp-part dp-working" : "dp-part")">
+                    @switch (part.Kind)
+                    {
+                        case PartKind.Mux:
+                            <polygon points="@Mux(part)" />
+                            break;
+                        case PartKind.Alu:
+                            <polygon points="@Alu(part)" />
+                            break;
+                        case PartKind.Unit:
+                            <rect x="@part.X" y="@part.Y" width="@part.Width" height="@part.Height" rx="@(part.Height / 2)" />
+                            break;
+                        default:
+                            <rect x="@part.X" y="@part.Y" width="@part.Width" height="@part.Height" />
+                            break;
+                    }
+
+                    @if (part.Kind == PartKind.Latch)
+                    {
+                        var (x, y) = (part.X + part.Width / 2, part.Y + part.Height / 2);
+                        @Text("dp-latch", x, y, part.Label, $"rotate(-90 {Number(x)} {Number(y)})")
+                    }
+                    else if (part.Label.Length > 0)
+                    {
+                        @Text(null, part.X + part.Width / 2, part.Y + part.Height / 2, part.Label)
+                    }
+                </g>
+            }
+
+            @* What is in each stage, written under it as the diagram writes it: lit when held, struck out when thrown away. *@
+            @foreach (var stage in Enum.GetValues<Stage>())
+            {
+                var (from, to) = _view.Model.Column(stage);
+                var middle = (from + to) / 2;
+                var inside = Session.Record?[stage] ?? default;
+                var text = inside.HasInstruction && Labels is not null ? Caption(inside) : string.Empty;
+                @Text("dp-stage", middle, 372, StageNames[(int)stage])
+                @if (inside.State == Occupancy.Held)
+                {
+                    var width = text.Length * 5.4 + 4;
+                    <rect class="dp-held-cell" x="@Number(middle - width / 2)" y="381" width="@Number(width)" height="12" />
+                }
+                @Text(CaptionClass(inside.State), middle, 387, text)
+            }
+
+            @* Over everything, a wide unseen line along each wire: something to point at. *@
+            @foreach (var reading in _view.Wires)
+            {
+                var id = reading.Wire.Id;
+                <polyline @key="@("h:" + id)" class="dp-hit" points="@Points(reading.Wire)"
+                          @onmouseover="() => _pointed = id" @onmouseout="() => _pointed = null" @onclick="() => _pointed = id">
+                    <title>@reading.Describe(Messages)</title>
+                </polyline>
+            }
+        </svg>
+    </div>
+    <p class="stair-legend" role="status">@(Pointed is { } pointed ? pointed.Describe(Messages) : Messages.DatapathHint)</p>
+</section>
+
+@code {
+    private static readonly string[] StageNames = ["IF", "ID", "EX", "MEM", "WB"];
+
+    private DatapathModel? _model;
+    private DatapathView _view = default!;
+
+    // The wire being pointed at, by its id: it stays pointed at while the cycles go by under it.
+    private string? _pointed;
+
+    /// <summary>The run to draw.</summary>
+    [Parameter, EditorRequired]
+    public Session Session { get; set; } = default!;
+
+    /// <summary>How the program's instructions are written; null when there is no program.</summary>
+    [Parameter, EditorRequired]
+    public InstructionLabels? Labels { get; set; }
+
+    [Parameter, EditorRequired]
+    public IMessages Messages { get; set; } = default!;
+
+    private WireReading? Pointed
+    {
+        get
+        {
+            foreach (var reading in _view.Wires)
+            {
+                if (reading.Wire.Id == _pointed)
+                {
+                    return reading;
+                }
+            }
+
+            return null;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // The drawing changes only when the pipeline is built another way.
+        if (_model is null || _model.Config != Session.Config)
+        {
+            _model = DatapathModel.For(Session.Config);
+        }
+
+        _view = DatapathView.Of(_model, Session.Record, Labels?.Registers ?? RegisterStyle.Abi);
+    }
+
+    private string LineClass(WireReading reading) =>
+        (reading.Active ? "dp-wire dp-active" : "dp-wire")
+        + (reading.Wire.Kind == WireKind.Control ? " dp-control" : string.Empty)
+        + (reading.Wire.Id == _pointed ? " dp-pointed" : string.Empty);
+
+    private static string CaptionClass(Occupancy state) => state switch
+    {
+        Occupancy.Held => "dp-caption dp-held",
+        Occupancy.Squashed => "dp-caption dp-squashed",
+        _ => "dp-caption",
+    };
+
+    private string Caption(StageView inside)
+    {
+        var line = Labels!.Describe(inside.Pc, inside.Raw);
+        return line.Operands.Length == 0 ? line.Mnemonic : line.Mnemonic + " " + line.Operands;
+    }
+
+    private static string Points(Wire wire) => string.Join(' ', wire.Points.Select(point => Number(point.X) + "," + Number(point.Y)));
+
+    // A multiplexer narrows towards its output, on the right.
+    private static string Mux(Part part)
+    {
+        var slope = Math.Min(part.Height / 6, 8);
+        return $"{Number(part.X)},{Number(part.Y)} {Number(part.Right)},{Number(part.Y + slope)} "
+            + $"{Number(part.Right)},{Number(part.Bottom - slope)} {Number(part.X)},{Number(part.Bottom)}";
+    }
+
+    // The ALU is the notched shape the textbooks draw: two inputs on the left, one result on the right.
+    private static string Alu(Part part)
+    {
+        var (third, middle, notch) = (part.Height / 3, part.Y + part.Height / 2, part.Width / 4);
+        return $"{Number(part.X)},{Number(part.Y)} {Number(part.Right)},{Number(part.Y + third)} "
+            + $"{Number(part.Right)},{Number(part.Bottom - third)} {Number(part.X)},{Number(part.Bottom)} "
+            + $"{Number(part.X)},{Number(middle + notch)} {Number(part.X + notch)},{Number(middle)} {Number(part.X)},{Number(middle - notch)}";
+    }
+
+    // Razor keeps the name of this element for itself, so it is written out by hand.
+    private static RenderFragment Text(string? style, double x, double y, string content, string? transform = null) => builder =>
+    {
+        builder.OpenElement(0, "text");
+        builder.AddAttribute(1, "class", style);
+        builder.AddAttribute(2, "x", Number(x));
+        builder.AddAttribute(3, "y", Number(y));
+        builder.AddAttribute(4, "transform", transform);
+        builder.AddContent(5, content);
+        builder.CloseElement();
+    };
+
+    private static string Number(double value) => value.ToString("0.#", CultureInfo.InvariantCulture);
+}

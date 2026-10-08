@@ -34,6 +34,10 @@
     {
         <ComparePane Job="_compare" Program="compared" Current="_session.Config" Messages="Messages" OnChoose="Rebuild" />
     }
+    else if (_datapath)
+    {
+        <DatapathPane Session="_session" Labels="_labels" Messages="Messages" />
+    }
     else
     {
         <PipelinePane Session="_session" Labels="_labels" Messages="Messages" />
@@ -64,6 +68,9 @@
         </button>
         <button type="button" class="softkey" aria-keyshortcuts="F7" disabled="@(_session.Program is null)" @onclick="CompareOrDiagram">
             <span class="softkey-fn">F7</span><span class="softkey-name inverse">@(_compare is null ? Messages.CompareKey : Messages.DiagramKey)</span>
+        </button>
+        <button type="button" class="softkey" aria-keyshortcuts="F4" @onclick="DatapathOrDiagram">
+            <span class="softkey-fn">F4</span><span class="softkey-name inverse">@(_datapath && _compare is null ? Messages.StaircaseKey : Messages.DatapathKey)</span>
         </button>
         <button type="button" class="softkey" aria-keyshortcuts="F2" @onclick="Share">
             <span class="softkey-fn">F2</span><span class="softkey-name inverse">@Messages.ShareKey</span>
@@ -96,6 +103,9 @@
 
     // The comparison on screen in place of the diagram, finished or still being made.
     private CompareJob? _compare;
+
+    // The datapath is on screen in place of the diagram.
+    private bool _datapath;
 
     // Set while the run is going on its own; cancelling it is how the run is paused.
     private CancellationTokenSource? _going;
@@ -164,6 +174,9 @@
             case "F2":
                 _ = Share();
                 break;
+            case "F4":
+                DatapathOrDiagram();
+                break;
             case "F5":
                 RunOrPause();
                 break;
@@ -203,6 +216,14 @@
         _source = SourceView.Of(_session.Assembly);
         _labels = _session.Program is { } program ? new InstructionLabels(program) : null;
         Touch();
+    }
+
+    // The diagram and the datapath are two views of the same cycle; asking for either leaves
+    // the comparison, which is of whole runs.
+    private void DatapathOrDiagram()
+    {
+        _datapath = _compare is not null || !_datapath;
+        _compare = null;
     }
 
     private void CompareOrDiagram()
