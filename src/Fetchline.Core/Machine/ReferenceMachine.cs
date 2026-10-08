@@ -17,9 +17,9 @@ public sealed class ReferenceMachine
     private readonly CacheEntry[] _cache = new CacheEntry[CacheSize];
     private Commit _last;
 
-    public ReferenceMachine(Program program, TextWriter? output = null)
+    public ReferenceMachine(Program program, TextWriter? output = null, ExecutionEnvironment? environment = null)
     {
-        Hart = new Hart(program, output);
+        Hart = new Hart(program, output, environment);
     }
 
     public Hart Hart { get; }

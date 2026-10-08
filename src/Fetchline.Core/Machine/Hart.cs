@@ -6,6 +6,22 @@ using Fetchline.Core.Trace;
 
 namespace Fetchline.Core.Machine;
 
+/// <summary>What surrounds a program: who answers its <c>ecall</c>, and what memory it has.</summary>
+public enum ExecutionEnvironment : byte
+{
+    /// <summary>
+    /// The playground and <c>fetchline run</c>. <c>ecall</c> is a system call, <c>ebreak</c>
+    /// pauses, memory is mapped, and a mistake stops the program with a sentence.
+    /// </summary>
+    Host,
+
+    /// <summary>
+    /// Bare metal, as the official tests expect. <c>ecall</c> and <c>ebreak</c> trap to
+    /// <c>mtvec</c>, memory is flat, and a write to <c>tohost</c> ends the run.
+    /// </summary>
+    Bare,
+}
+
 /// <summary>
 /// A hart is RISC-V's word for one hardware thread: the registers, the program counter, the
 /// memory and everything around them that an instruction can affect. Both machines own one.
@@ -36,8 +52,15 @@ public sealed class Hart
     private readonly System.Text.Decoder _utf8 = Encoding.UTF8.GetDecoder();
     private readonly uint _textStart;
     private readonly uint _textSpan;
+    private readonly bool _hasText;
+    private readonly bool _hasTohost;
+    private readonly uint _tohost;
 
-    public Hart(Program program, TextWriter? output = null)
+    /// <param name="environment">
+    /// What surrounds the program. When not given, a program with a <c>tohost</c> symbol is taken
+    /// to be a bare-metal test and anything else to be a host program.
+    /// </param>
+    public Hart(Program program, TextWriter? output = null, ExecutionEnvironment? environment = null)
     {
         Program = program;
         Output = output ?? new StringWriter();
@@ -47,15 +70,24 @@ public sealed class Hart
             Memory.WriteBytes(segment.Address, segment.Data.Span);
         }
 
-        Map = MemoryMap.ForHost(program);
+        _hasTohost = program.TryGetSymbol("tohost", out var tohost);
+        _tohost = tohost?.Value ?? 0;
+        Environment = environment ?? (_hasTohost ? ExecutionEnvironment.Bare : ExecutionEnvironment.Host);
+        Pc = program.Entry;
 
         var text = program.Text;
         TextEnd = text is null ? program.Entry : text.Address + text.Size;
+        if (Environment == ExecutionEnvironment.Bare)
+        {
+            // Bare metal: flat memory, every register zero, and nothing is checked.
+            return;
+        }
+
+        Map = MemoryMap.ForHost(program);
         _textStart = text?.Address ?? 0;
         _textSpan = text is { Size: >= 4 } ? text.Size - 4 : 0;
-        HasText = text is { Size: >= 4 };
+        _hasText = text is { Size: >= 4 };
 
-        Pc = program.Entry;
         X[2] = MemoryMap.StackTop;
         X[3] = MemoryMap.DataBase;
 
@@ -66,6 +98,8 @@ public sealed class Hart
 
     public Program Program { get; }
 
+    public ExecutionEnvironment Environment { get; }
+
     /// <summary>The integer registers. <c>x0</c> is never written.</summary>
     public uint[] X { get; } = new uint[Registers.Count];
 
@@ -73,22 +107,31 @@ public sealed class Hart
 
     public Memory Memory { get; }
 
-    /// <summary>What the program may touch.</summary>
-    public MemoryMap Map { get; }
+    /// <summary>The control and status registers.</summary>
+    public CsrFile Csrs { get; } = new();
+
+    /// <summary>What a host program may touch. A bare program has no map: its memory is flat.</summary>
+    public MemoryMap? Map { get; }
 
     /// <summary>Where the program's console output goes.</summary>
     public TextWriter Output { get; }
 
-    /// <summary>The address just past the last instruction. Reaching it ends the program.</summary>
+    /// <summary>The address just past the last instruction. Reaching it ends a host program.</summary>
     public uint TextEnd { get; }
 
     /// <summary>How many instructions have completed.</summary>
-    public ulong InstructionsRetired { get; set; }
+    public ulong InstructionsRetired
+    {
+        get => Csrs.InstructionsRetired;
+        set => Csrs.InstructionsRetired = value;
+    }
 
     /// <summary>How many clock cycles have passed. The machine that owns the hart advances it.</summary>
-    public ulong Cycle { get; set; }
-
-    private bool HasText { get; }
+    public ulong Cycle
+    {
+        get => Csrs.Cycle;
+        set => Csrs.Cycle = value;
+    }
 
     /// <summary>
     /// Reads the instruction word at an address. When there is none, <paramref name="stop"/> is
@@ -97,7 +140,7 @@ public sealed class Hart
     public bool TryFetch(uint pc, out uint word, out Commit stop)
     {
         // Almost every fetch is from the one text segment; the map is only asked about the rest.
-        if ((HasText && pc - _textStart <= _textSpan) || Map.Allows(pc, 4, Access.Execute))
+        if (Map is null || (_hasText && pc - _textStart <= _textSpan) || Map.Allows(pc, 4, Access.Execute))
         {
             word = Memory.ReadU32(pc);
             stop = default;
@@ -146,11 +189,15 @@ public sealed class Hart
         var value = control.Wb == WbSrc.PcPlus4 ? pc + 4 : alu;
         byte storeBytes = 0;
         uint storeAddress = 0, storeValue = 0;
+        var stop = StopReason.None;
+        var exitCode = 0;
 
+        // A misaligned load or store is carried out, not trapped: the official ma_data test
+        // requires it, and memory here has no alignment of its own.
         switch (control.Mem)
         {
             case MemOp.Load:
-                if (!Map.Allows(alu, control.MemBytes, Access.Read))
+                if (Map is not null && !Map.Allows(alu, control.MemBytes, Access.Read))
                 {
                     return Fault(pc, instruction, Map.Explain(alu, control.MemBytes, Access.Read));
                 }
@@ -159,7 +206,7 @@ public sealed class Hart
                 break;
 
             case MemOp.Store:
-                if (!Map.Allows(alu, control.MemBytes, Access.Write))
+                if (Map is not null && !Map.Allows(alu, control.MemBytes, Access.Write))
                 {
                     return Fault(pc, instruction, Map.Explain(alu, control.MemBytes, Access.Write));
                 }
@@ -168,6 +215,15 @@ public sealed class Hart
                 storeAddress = alu;
                 storeValue = storeBytes == 4 ? rs2 : rs2 & ((1u << (8 * storeBytes)) - 1);
                 Memory.Write(alu, storeBytes, rs2);
+
+                // A test program ends by writing its verdict to the word named tohost.
+                if (_hasTohost && Environment == ExecutionEnvironment.Bare && alu - _tohost < 4
+                    && Memory.ReadU32(_tohost) is var verdict and not 0)
+                {
+                    stop = StopReason.Tohost;
+                    exitCode = (int)verdict;
+                }
+
                 break;
         }
 
@@ -175,18 +231,55 @@ public sealed class Hart
         {
             case SystemOp.None or SystemOp.FenceI:
                 break;
+
             case SystemOp.Ecall:
-                return SystemCall(pc, instruction);
-            case SystemOp.Ebreak:
+                return Environment == ExecutionEnvironment.Host
+                    ? SystemCall(pc, instruction)
+                    : Raise(pc, instruction, TrapCause.EcallFromMachine, 0);
+
+            case SystemOp.Ebreak when Environment == ExecutionEnvironment.Host:
                 // A pause, not an end: the program counter moves on so that it can be resumed.
                 InstructionsRetired++;
                 return new Commit { Pc = pc, Instruction = instruction, NextPc = next, Stop = StopReason.Breakpoint };
+
+            case SystemOp.Ebreak:
+                return Raise(pc, instruction, TrapCause.Breakpoint, pc);
+
+            case SystemOp.Mret:
+                next = Csrs.ReturnFromTrap();
+                break;
+
             default:
-                // CSR access and mret arrive with the trap machinery.
-                return Raise(pc, instruction, TrapCause.IllegalInstruction, instruction.Raw);
+            {
+                // A CSR instruction reads the register into rd and writes a new value made from the
+                // old one and its operand. The set and clear forms write nothing when the operand
+                // field is zero, which is how a read-only register can be read at all.
+                var number = instruction.Imm;
+                var operand = control.CsrImmediate ? instruction.Rs1 : rs1;
+                var writes = control.System == SystemOp.CsrWrite || instruction.Rs1 != 0;
+
+                if (!Csrs.TryRead(number, out var old)
+                    || (writes && !Csrs.TryWrite(number, Exec.CsrUpdate(control.System, old, operand))))
+                {
+                    return Raise(pc, instruction, TrapCause.IllegalInstruction, instruction.Raw);
+                }
+
+                value = old;
+                break;
+            }
         }
 
-        InstructionsRetired++;
+        // An instruction that wrote minstret set the count the next instruction reads, so it
+        // does not also count itself.
+        if (Csrs.WroteInstret)
+        {
+            Csrs.WroteInstret = false;
+        }
+        else
+        {
+            InstructionsRetired++;
+        }
+
         var register = control.WritesRd ? instruction.Rd : (byte)0;
         return new Commit
         {
@@ -198,11 +291,15 @@ public sealed class Hart
             StoreAddress = storeAddress,
             StoreValue = storeValue,
             NextPc = next,
+            Stop = stop,
+            ExitCode = exitCode,
         };
     }
 
     private Commit SystemCall(uint pc, in Instruction instruction)
     {
+        // System calls belong to the host environment, which always has a map.
+        var map = Map!;
         var commit = new Commit { Pc = pc, Instruction = instruction, NextPc = pc + 4 };
         var (number, argument) = (X[A7], X[A0]);
 
@@ -221,9 +318,9 @@ public sealed class Hart
                 var bytes = new List<byte>();
                 for (var address = argument; ; address++)
                 {
-                    if (!Map.Allows(address, 1, Access.Read))
+                    if (!map.Allows(address, 1, Access.Read))
                     {
-                        return Fault(pc, instruction, Map.Explain(address, 1, Access.Read) + ", while printing a string");
+                        return Fault(pc, instruction, map.Explain(address, 1, Access.Read) + ", while printing a string");
                     }
 
                     var value = Memory.ReadByte(address);
@@ -260,9 +357,9 @@ public sealed class Hart
 
                 for (uint i = 0; i < count; i++)
                 {
-                    if (!Map.Allows(buffer + i, 1, Access.Read))
+                    if (!map.Allows(buffer + i, 1, Access.Read))
                     {
-                        return Fault(pc, instruction, Map.Explain(buffer + i, 1, Access.Read) + ", while writing output");
+                        return Fault(pc, instruction, map.Explain(buffer + i, 1, Access.Read) + ", while writing output");
                     }
                 }
 
@@ -303,13 +400,35 @@ public sealed class Hart
         }
     }
 
-    /// <summary>An exception. With no trap machinery yet, every one of them stops the program.</summary>
-    private Commit Raise(uint pc, in Instruction instruction, uint cause, uint value) => Fault(pc, instruction, cause switch
+    /// <summary>
+    /// An exception. On bare metal it is delivered: the cause is recorded in the CSRs and control
+    /// goes to the trap vector, which is what a test program expects. A host program has no
+    /// handler to go to, so there it is a fault, and the program stops with a sentence.
+    /// </summary>
+    private Commit Raise(uint pc, in Instruction instruction, uint cause, uint value)
     {
-        TrapCause.IllegalInstruction => $"an illegal instruction (0x{instruction.Raw:x8})",
-        TrapCause.InstructionAddressMisaligned => $"a jump to 0x{value:x8}, which is not a multiple of 4",
-        _ => "an exception (" + TrapCause.Name(cause) + ")",
-    });
+        if (Environment == ExecutionEnvironment.Bare)
+        {
+            return new Commit
+            {
+                Pc = pc,
+                Instruction = instruction,
+                Trapped = true,
+                Cause = cause,
+                TrapValue = value,
+                NextPc = Csrs.EnterTrap(pc, cause, value),
+            };
+        }
+
+        return Fault(pc, instruction, cause switch
+        {
+            TrapCause.IllegalInstruction when instruction is { IsLegal: true, Control.IsCsr: true } =>
+                $"an access to CSR {Csr.Format(instruction.Imm)}, which this machine does not have or cannot write",
+            TrapCause.IllegalInstruction => $"an illegal instruction (0x{instruction.Raw:x8})",
+            TrapCause.InstructionAddressMisaligned => $"a jump to 0x{value:x8}, which is not a multiple of 4",
+            _ => "an exception (" + TrapCause.Name(cause) + ")",
+        });
+    }
 
     private static Commit Fault(uint pc, in Instruction instruction, string what) => new()
     {
