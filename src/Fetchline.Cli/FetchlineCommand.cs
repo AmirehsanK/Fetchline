@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Fetchline.Cli.Commands;
 
 namespace Fetchline.Cli;
 
@@ -9,6 +10,19 @@ namespace Fetchline.Cli;
 /// </summary>
 internal static class FetchlineCommand
 {
+    /// <summary>The command succeeded.</summary>
+    public const int Ok = 0;
+
+    /// <summary>The input was read but is wrong: the source has errors, a test failed.</summary>
+    public const int Failed = 1;
+
+    /// <summary>The command could not be carried out: a file is missing or unreadable.</summary>
+    public const int Unusable = 2;
+
     public static RootCommand Build() =>
-        new("Fetchline: a RISC-V RV32IM assembler, emulator and five-stage pipeline tracer.");
+        new("Fetchline: a RISC-V RV32IM assembler, emulator and five-stage pipeline tracer.")
+        {
+            AsmCommand.Build(),
+            DisCommand.Build(),
+        };
 }

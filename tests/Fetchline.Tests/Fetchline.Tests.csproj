@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Fetchline.Cli\Fetchline.Cli.csproj" />
     <ProjectReference Include="..\..\src\Fetchline.Core\Fetchline.Core.csproj" />
   </ItemGroup>
 

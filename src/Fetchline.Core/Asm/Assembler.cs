@@ -96,7 +96,10 @@ internal sealed partial class Assembly : IExprScope
         Layout();
         SecondPass();
 
-        return new AssemblyResult(_diagnostics.HasErrors ? null : BuildProgram(), _diagnostics.Items, _source);
+        // The parser, the two passes and the layout each find their own mistakes; the reader wants
+        // them in the order of the source.
+        var diagnostics = _diagnostics.Items.OrderBy(d => d.Span.Line).ThenBy(d => d.Span.Column).ToList();
+        return new AssemblyResult(_diagnostics.HasErrors ? null : BuildProgram(), diagnostics, _source);
     }
 
     // ---- First pass: sizes, and so the offset of every label ----------------------------------

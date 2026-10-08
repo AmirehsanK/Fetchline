@@ -421,7 +421,8 @@ public class AssemblerDataTests
     {
         var diagnostics = Diagnose(".data\n.byte 300\n.wrod 1\n.word missing\n.half 70000");
 
-        Assert.Equal([3, 2, 4, 5], diagnostics.Select(d => d.Span.Line));
+        // Whichever pass found each one, they come out in the order of the source.
+        Assert.Equal([2, 3, 4, 5], diagnostics.Select(d => d.Span.Line));
     }
 
     [Fact]
