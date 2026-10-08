@@ -296,7 +296,7 @@ ticked in the commit that finishes the section.
 **M1. Instruction table, decoder, encoder, disassembler.** Done when every instruction
 round-trips over random fields and every match and mask equals the `riscv-opcodes` files.
 
-- [ ] 1.1 Bit fields and immediates
+- [x] 1.1 Bit fields and immediates
 - [ ] 1.2 The instruction table
 - [ ] 1.3 The decoder
 - [ ] 1.4 The encoder, and round trips on seeded random fields
