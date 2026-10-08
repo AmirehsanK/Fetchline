@@ -12,8 +12,9 @@ namespace Fetchline.Core.Pipeline;
 /// they stand, in the order WB, MEM, EX, ID, IF; then all the latches take their new values at
 /// once. The backwards order is what lets a signal produced late in the pipeline act on an
 /// earlier stage in the same cycle, as a wire would: the register file is written before it is
-/// read. Nothing a stage computes can leak into another stage's inputs except by being such a
-/// signal, so there are no accidents of evaluation order.
+/// read, a redirect from EX reaches IF, a flush from MEM reaches everything behind it. Nothing a
+/// stage computes can leak into another stage's inputs except by being such a signal, so there
+/// are no accidents of evaluation order.
 /// </summary>
 public sealed class PipelineMachine
 {
@@ -37,6 +38,9 @@ public sealed class PipelineMachine
     // is fetched; the run ends in the cycle it leaves.
     private bool _halting;
 
+    // The events of the cycle being computed; null when not recording.
+    private List<PipelineEvent>? _events;
+
     public PipelineMachine(Program program, TextWriter? output = null, ExecutionEnvironment? environment = null)
     {
         Hart = new Hart(program, output, environment);
@@ -48,6 +52,12 @@ public sealed class PipelineMachine
 
     /// <summary>How many cycles have been run.</summary>
     public ulong Cycles => Hart.Cycle;
+
+    /// <summary>
+    /// Whether each cycle's record lists its events. Turning it off makes a long run cheaper when
+    /// only the commit records are wanted; what the machine computes is the same either way.
+    /// </summary>
+    public bool Recording { get; set; } = true;
 
     /// <summary>Why the machine stopped, or <see cref="StopReason.None"/> while it is running.</summary>
     public StopReason Stopped { get; private set; }
@@ -65,6 +75,7 @@ public sealed class PipelineMachine
         var hart = Hart;
         var x = hart.X;
         var fetchingAllowed = !_halting;
+        _events = Recording ? [] : null;
         Stopped = StopReason.None;      // a pause at an ebreak ends when the machine is stepped again
 
         // ---- WB: the result is written to its register -------------------------------------
@@ -76,11 +87,13 @@ public sealed class PipelineMachine
             if (commit.Register != 0)
             {
                 x[commit.Register] = commit.Value;
+                _events?.Add(new RegWriteEvent(_memWb.Seq, commit.Register, commit.Value));
             }
 
             committed = commit;
             Stopped = commit.Stop;
             writeBackView = new StageView(Occupancy.Normal, _memWb.Seq, commit.Pc, commit.Instruction.Raw);
+            _events?.Add(new CommitEvent(_memWb.Seq));
         }
 
         // ---- MEM: memory is read or written; this is the commit point ------------------------
@@ -89,24 +102,50 @@ public sealed class PipelineMachine
         var redirect = false;
         uint redirectTo = 0;
         var flush = false;
+        var flushCause = FlushCause.System;
+        ulong redirectBy = 0;
         if (_exMem.Valid)
         {
+            var control = _exMem.Instruction.Control;
             var commit = hart.Complete(
                 _exMem.Pc, _exMem.Instruction, _exMem.Rs1, _exMem.Rs2, _exMem.Alu, _exMem.Taken, _exMem.Target);
             nextMemWb = new MemWb(true, _exMem.Seq, commit);
             memoryView = new StageView(Occupancy.Normal, _exMem.Seq, _exMem.Pc, _exMem.Instruction.Raw);
+
+            if (_events is not null)
+            {
+                if (control.Mem == MemOp.Load && commit.Stop == StopReason.None)
+                {
+                    var loaded = Exec.Extend(hart.Memory.Read(_exMem.Alu, control.MemBytes), control.MemBytes, control.MemSigned);
+                    _events.Add(new MemReadEvent(_exMem.Seq, _exMem.Alu, control.MemBytes, loaded));
+                }
+
+                if (commit.WritesMemory)
+                {
+                    _events.Add(new MemWriteEvent(_exMem.Seq, commit.StoreAddress, commit.StoreBytes, commit.StoreValue));
+                }
+
+                if (commit.Trapped)
+                {
+                    _events.Add(new TrapEvent(_exMem.Seq, commit.Cause, commit.TrapValue, commit.NextPc));
+                }
+            }
 
             // A system instruction, a trap or a stop changes what the instructions behind it
             // should have seen, or whether they should run at all. All three of them are thrown
             // away and fetched again from where this instruction says control goes. Because this
             // happens here and nowhere earlier, a system call never runs on a wrong path, and an
             // instruction that traps has changed nothing.
-            if (_exMem.Instruction.Control.System != SystemOp.None || commit.Trapped || commit.Stop != StopReason.None)
+            if (control.System != SystemOp.None || commit.Trapped || commit.Stop != StopReason.None)
             {
                 flush = true;
                 redirect = true;
                 redirectTo = commit.NextPc;
+                redirectBy = _exMem.Seq;
                 _halting = commit.Stop is not (StopReason.None or StopReason.Breakpoint);
+                flushCause = commit.Stop != StopReason.None ? FlushCause.Stop
+                    : commit.Trapped ? FlushCause.Trap
+                    : FlushCause.System;
             }
         }
 
@@ -116,6 +155,7 @@ public sealed class PipelineMachine
         if (_idEx.Valid && flush)
         {
             executeView = new StageView(Occupancy.Squashed, _idEx.Seq, _idEx.Pc, _idEx.Instruction.Raw);
+            _events?.Add(new FlushEvent(_idEx.Seq, flushCause, Stage.Execute, redirectBy));
         }
         else if (_idEx.Valid)
         {
@@ -124,8 +164,8 @@ public sealed class PipelineMachine
 
             // The values read in ID may be out of date: an instruction one or two ahead may have
             // computed a newer one that is not in the register file yet.
-            var rs1 = Forward(instruction.Rs1, control.UsesRs1, _idEx.Rs1);
-            var rs2 = Forward(instruction.Rs2, control.UsesRs2, _idEx.Rs2);
+            var rs1 = Forward(Operand.A, instruction.Rs1, control.UsesRs1, _idEx.Rs1);
+            var rs2 = Forward(Operand.B, instruction.Rs2, control.UsesRs2, _idEx.Rs2);
 
             var alu = Exec.Alu(
                 control.Alu,
@@ -140,6 +180,13 @@ public sealed class PipelineMachine
             {
                 redirect = true;
                 redirectTo = target;
+                redirectBy = _idEx.Seq;
+                flushCause = FlushCause.Branch;
+            }
+
+            if (control.IsControlFlow)
+            {
+                _events?.Add(new BranchEvent(_idEx.Seq, taken, target, Mispredicted: taken, Stage.Execute));
             }
 
             nextExMem = new ExMem(true, _idEx.Seq, _idEx.Pc, instruction, rs1, rs2, alu, taken, target);
@@ -161,8 +208,17 @@ public sealed class PipelineMachine
             // into EX next cycle. Forwarding cannot reach back in time, so this instruction waits
             // here for a cycle, a bubble goes into EX in its place, and then MEM/WB can forward.
             var ahead = _idEx.Instruction;
-            stall = _idEx.Valid && ahead.Control.Mem == MemOp.Load && ahead.Rd != 0
-                && ((control.UsesRs1 && instruction.Rs1 == ahead.Rd) || (control.UsesRs2 && instruction.Rs2 == ahead.Rd));
+            if (!redirect && _idEx.Valid && ahead.Control.Mem == MemOp.Load && ahead.Rd != 0)
+            {
+                // A dependency counts only if the instruction really reads the register.
+                var needsRs1 = control.UsesRs1 && instruction.Rs1 == ahead.Rd;
+                var needsRs2 = control.UsesRs2 && instruction.Rs2 == ahead.Rd;
+                if (needsRs1 || needsRs2)
+                {
+                    stall = true;
+                    _events?.Add(new StallEvent(_ifId.Seq, StallCause.LoadUse, Stage.Decode, ahead.Rd, _idEx.Seq));
+                }
+            }
 
             if (!stall)
             {
@@ -203,11 +259,13 @@ public sealed class PipelineMachine
             if (decodeView.HasInstruction)
             {
                 decodeView = decodeView with { State = Occupancy.Squashed };
+                _events?.Add(new FlushEvent(decodeView.Seq, flushCause, Stage.Decode, redirectBy));
             }
 
             if (fetching.Valid)
             {
                 fetchView = new StageView(Occupancy.Squashed, fetching.Seq, fetching.Pc, fetching.Raw);
+                _events?.Add(new FlushEvent(fetching.Seq, flushCause, Stage.Fetch, redirectBy));
             }
         }
         else
@@ -241,6 +299,8 @@ public sealed class PipelineMachine
         }
 
         hart.Cycle++;
+        var events = _events;
+        _events = null;
         return new CycleRecord
         {
             Cycle = hart.Cycle,
@@ -251,6 +311,7 @@ public sealed class PipelineMachine
             WriteBack = writeBackView,
             Commit = committed,
             End = end,
+            Events = events ?? (IReadOnlyList<PipelineEvent>)[],
         };
     }
 
@@ -282,7 +343,7 @@ public sealed class PipelineMachine
     /// Whether the instruction really reads this register. A field that only happens to hold a
     /// register number (the constant of a CSR-immediate, say) must not be forwarded to.
     /// </param>
-    private uint Forward(int register, bool used, uint fromDecode)
+    private uint Forward(Operand operand, int register, bool used, uint fromDecode)
     {
         if (!used || register == 0)
         {
@@ -292,18 +353,29 @@ public sealed class PipelineMachine
         if (_exMem.Valid && _exMem.Instruction.Control is { WritesRd: true } producer && _exMem.Instruction.Rd == register)
         {
             // In MEM an arithmetic result or a link address is already known. A value that only
-            // exists after MEM (a load) is not, and nothing older may stand in for it.
-            return producer.Wb switch
+            // exists after MEM (a load, a CSR read) is not, and nothing older may stand in for
+            // it. That case never gets here: a use of a load has been stalled a cycle, and
+            // whatever is behind a CSR instruction is being flushed this very cycle.
+            uint? known = producer.Wb switch
             {
                 WbSrc.Alu => _exMem.Alu,
                 WbSrc.PcPlus4 => _exMem.Pc + 4,
-                _ => fromDecode,
+                _ => null,
             };
+            if (known is { } value)
+            {
+                _events?.Add(new ForwardEvent(_idEx.Seq, ForwardSource.ExMem, operand, (byte)register, value, _exMem.Seq));
+                return value;
+            }
+
+            return fromDecode;
         }
 
         if (_memWb.Valid && _memWb.Commit.Register == register)
         {
-            return _memWb.Commit.Value;
+            var value = _memWb.Commit.Value;
+            _events?.Add(new ForwardEvent(_idEx.Seq, ForwardSource.MemWb, operand, (byte)register, value, _memWb.Seq));
+            return value;
         }
 
         return fromDecode;

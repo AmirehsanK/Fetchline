@@ -77,8 +77,45 @@ public sealed class CycleRecord
     /// </summary>
     public Commit? End { get; init; }
 
+    /// <summary>
+    /// What happened in the cycle, in the order the stages are worked out: WB, MEM, EX, ID, IF.
+    /// Empty when the machine was told not to record.
+    /// </summary>
+    public IReadOnlyList<PipelineEvent> Events { get; init; } = [];
+
     /// <summary>Why the machine stopped in this cycle, or <see cref="StopReason.None"/>.</summary>
     public StopReason Stop => End?.Stop ?? Commit?.Stop ?? StopReason.None;
+
+    /// <summary>Adds the whole cycle to a hash of the run.</summary>
+    public void AddTo(ref TraceHash hash)
+    {
+        hash.Add(Cycle);
+        foreach (var stage in (ReadOnlySpan<StageView>)[Fetch, Decode, Execute, Memory, WriteBack])
+        {
+            hash.Add((byte)stage.State);
+            hash.Add(stage.Seq);
+            hash.Add(stage.Pc);
+            hash.Add(stage.Raw);
+        }
+
+        hash.Add(Commit is not null);
+        if (Commit is { } commit)
+        {
+            hash.Add(commit);
+        }
+
+        hash.Add(End is not null);
+        if (End is { } end)
+        {
+            hash.Add(end);
+        }
+
+        hash.Add((uint)Events.Count);
+        foreach (var item in Events)
+        {
+            item.AddTo(ref hash);
+        }
+    }
 
     /// <summary>The view of one stage.</summary>
     public StageView this[Stage stage] => stage switch
