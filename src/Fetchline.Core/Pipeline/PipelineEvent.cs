@@ -38,6 +38,12 @@ public enum StallCause : byte
     /// computing: one in EX, or a load that has not finished MEM.
     /// </summary>
     BranchOperand,
+
+    /// <summary>
+    /// The instruction is a multiply or divide that takes several cycles in EX, and has not had
+    /// them all. It waits for nothing but itself; what is behind it waits for it.
+    /// </summary>
+    MultiCycle,
 }
 
 public enum FlushCause : byte
@@ -92,14 +98,22 @@ public sealed record ForwardEvent(
     }
 }
 
-/// <summary>An instruction was kept in its stage for a cycle.</summary>
+/// <summary>
+/// An instruction was kept in its stage for a cycle, and so was everything behind it. There is
+/// one event for each cycle of waiting, about the instruction that is the reason for it.
+/// </summary>
 /// <param name="Seq">The instruction that waits.</param>
 /// <param name="Stage">Where it waits.</param>
-/// <param name="Register">The register it is waiting for.</param>
-/// <param name="Producer">The instruction that will produce it.</param>
+/// <param name="Register">The register it is waiting for; zero when it is waiting for none.</param>
+/// <param name="Producer">The instruction that will produce it; zero when there is none.</param>
 /// <param name="ProducerStage">The stage that instruction is in while this one waits.</param>
+/// <param name="Remaining">
+/// For an instruction that takes several cycles in its stage: how many more it needs after this
+/// one. Zero for an instruction that is waiting for another.
+/// </param>
 public sealed record StallEvent(
-    ulong Seq, StallCause Cause, Stage Stage, byte Register, ulong Producer, Stage ProducerStage = Stage.Execute)
+    ulong Seq, StallCause Cause, Stage Stage, byte Register, ulong Producer, Stage ProducerStage = Stage.Execute,
+    byte Remaining = 0)
     : PipelineEvent(Seq)
 {
     public override void AddTo(ref TraceHash hash)
@@ -111,6 +125,7 @@ public sealed record StallEvent(
         hash.Add(Register);
         hash.Add(Producer);
         hash.Add((byte)ProducerStage);
+        hash.Add(Remaining);
     }
 }
 

@@ -165,6 +165,7 @@ public sealed class PipelineMachine
         // ---- EX: the ALU, and the branch decision --------------------------------------------
         var nextExMem = default(ExMem);
         var executeView = default(StageView);
+        var stillExecuting = default(IdEx);
         if (_idEx.Valid && flush)
         {
             executeView = new StageView(Occupancy.Squashed, _idEx.Seq, _idEx.Pc, _idEx.Instruction.Raw);
@@ -175,11 +176,12 @@ public sealed class PipelineMachine
             var instruction = _idEx.Instruction;
             var control = instruction.Control;
 
-            // A branch that was decided in ID took its operands there. It has nothing left to
-            // read in EX, so nothing is forwarded to it here.
+            // Two kinds of instruction have their operands already and read nothing here: a
+            // branch that was decided in ID took them there, and a multiply or divide that has
+            // been in EX for a cycle took them when it started.
             var decided = _idEx.Decided;
             var (rs1, rs2) = (_idEx.Rs1, _idEx.Rs2);
-            if (!decided)
+            if (!decided && _idEx.Spent == 0)
             {
                 // The values read in ID may be out of date: an instruction one or two ahead may
                 // have computed a newer one that is not in the register file yet.
@@ -187,52 +189,79 @@ public sealed class PipelineMachine
                 rs2 = Forward(Operand.B, instruction.Rs2, control.UsesRs2, rs2);
             }
 
-            var alu = Exec.Alu(
-                control.Alu,
-                Exec.OperandA(control.SrcA, rs1, _idEx.Pc),
-                Exec.OperandB(control.SrcB, rs2, instruction.Imm));
-            var taken = decided ? _idEx.Taken : Exec.Taken(control.Branch, rs1, rs2);
-            var target = decided ? _idEx.Target : Exec.Target(control.Branch, _idEx.Pc, instruction.Imm, alu);
-
-            if (Config.Branches == BranchDecision.Execute)
+            var remaining = control.IsMulDiv ? Config.MulDivCycles - 1 - _idEx.Spent : 0;
+            if (remaining > 0)
             {
-                // Fetch went on behind this instruction to wherever it was predicted to lead. If
-                // that is not where it really leads, the two instructions fetched since are from
-                // the wrong path. This is asked of every instruction, not only of branches: a
-                // stale entry in the branch target buffer can send fetch off after anything.
-                var next = taken ? target : _idEx.Pc + 4;
-                var mispredicted = next != _idEx.PredictedNext;
-                if (mispredicted)
-                {
-                    redirect = true;
-                    redirectTo = next;
-                    redirectBy = _idEx.Seq;
-                    flushCause = FlushCause.Branch;
-                }
-
-                if (control.IsControlFlow || mispredicted)
-                {
-                    _events?.Add(new BranchEvent(_idEx.Seq, taken, target, mispredicted, Stage.Execute));
-                }
-
-                if (control.IsControlFlow)
-                {
-                    outcome = (_idEx.Pc, taken, target);
-                }
+                // A multiply or divide that takes several cycles and has not had them all. It
+                // keeps EX, a bubble goes on to MEM in its place, and everything behind it
+                // waits. Nothing is missing and nothing is on a wrong path: this is a stall that
+                // is not a hazard. The operands are kept as they are now, as a multiplier
+                // latches its inputs when it starts: by its last cycle the instructions they
+                // were forwarded from have left the pipeline.
+                stillExecuting = _idEx with { Rs1 = rs1, Rs2 = rs2, Spent = _idEx.Spent + 1 };
+                executeView = new StageView(Occupancy.Held, _idEx.Seq, _idEx.Pc, instruction.Raw);
+                _events?.Add(new StallEvent(
+                    _idEx.Seq, StallCause.MultiCycle, Stage.Execute, Register: 0, Producer: 0, Remaining: (byte)remaining));
             }
+            else
+            {
+                var alu = Exec.Alu(
+                    control.Alu,
+                    Exec.OperandA(control.SrcA, rs1, _idEx.Pc),
+                    Exec.OperandB(control.SrcB, rs2, instruction.Imm));
+                var taken = decided ? _idEx.Taken : Exec.Taken(control.Branch, rs1, rs2);
+                var target = decided ? _idEx.Target : Exec.Target(control.Branch, _idEx.Pc, instruction.Imm, alu);
 
-            nextExMem = new ExMem(true, _idEx.Seq, _idEx.Pc, instruction, rs1, rs2, alu, taken, target);
-            executeView = new StageView(Occupancy.Normal, _idEx.Seq, _idEx.Pc, instruction.Raw);
+                if (Config.Branches == BranchDecision.Execute)
+                {
+                    // Fetch went on behind this instruction to wherever it was predicted to lead.
+                    // If that is not where it really leads, the two instructions fetched since
+                    // are from the wrong path. This is asked of every instruction, not only of
+                    // branches: a stale entry in the branch target buffer can send fetch off
+                    // after anything.
+                    var next = taken ? target : _idEx.Pc + 4;
+                    var mispredicted = next != _idEx.PredictedNext;
+                    if (mispredicted)
+                    {
+                        redirect = true;
+                        redirectTo = next;
+                        redirectBy = _idEx.Seq;
+                        flushCause = FlushCause.Branch;
+                    }
+
+                    if (control.IsControlFlow || mispredicted)
+                    {
+                        _events?.Add(new BranchEvent(_idEx.Seq, taken, target, mispredicted, Stage.Execute));
+                    }
+
+                    if (control.IsControlFlow)
+                    {
+                        outcome = (_idEx.Pc, taken, target);
+                    }
+                }
+
+                nextExMem = new ExMem(true, _idEx.Seq, _idEx.Pc, instruction, rs1, rs2, alu, taken, target);
+                executeView = new StageView(Occupancy.Normal, _idEx.Seq, _idEx.Pc, instruction.Raw);
+            }
         }
 
         // ---- ID: decode, and read the source registers ----------------------------------------
         // WB has already written this cycle, so a value written now is the value read now.
         var nextIdEx = default(IdEx);
         var decodeView = default(StageView);
-        var stall = false;
+        var stall = stillExecuting.Valid;
         var decodeRedirect = false;
         uint decodeTarget = 0;
-        if (_ifId.Valid)
+        if (stillExecuting.Valid)
+        {
+            // EX is keeping its instruction, so ID keeps its own and does nothing with it yet.
+            nextIdEx = stillExecuting;
+            if (_ifId.Valid)
+            {
+                decodeView = new StageView(Occupancy.Held, _ifId.Seq, _ifId.Pc, _ifId.Raw);
+            }
+        }
+        else if (_ifId.Valid)
         {
             var instruction = Decoder.Decode(_ifId.Raw);
             var control = instruction.Control;
@@ -569,9 +598,14 @@ public sealed class PipelineMachine
     private readonly record struct IfId(bool Valid, ulong Seq, uint Pc, uint Raw, uint PredictedNext);
 
     /// <param name="Decided">The branch was decided in ID; its outcome and target travel with it.</param>
+    /// <param name="Spent">
+    /// The cycles the instruction has already had in EX. It is only ever above zero for a multiply
+    /// or divide that takes several, and from then on <c>Rs1</c> and <c>Rs2</c> are its operands
+    /// as they were forwarded in its first cycle.
+    /// </param>
     private readonly record struct IdEx(
         bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2, uint PredictedNext,
-        bool Decided = false, bool Taken = false, uint Target = 0);
+        bool Decided = false, bool Taken = false, uint Target = 0, int Spent = 0);
 
     private readonly record struct ExMem(
         bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2, uint Alu, bool Taken, uint Target);

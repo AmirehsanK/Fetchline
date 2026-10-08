@@ -30,6 +30,9 @@ public interface IMessages
     /// <summary>A branch decided in ID is held there until its operand has been computed.</summary>
     string BranchOperand(string branch, string register, string producer, string producerStage, string readyAfter);
 
+    /// <summary>A multiply or divide keeps EX for another cycle, and what is behind it waits.</summary>
+    string MultiCycle(string instruction, string stage, int remaining);
+
     /// <summary>An operand was taken from a latch: <c>MEM/WB -> EX.A   x4 from lw</c>.</summary>
     string Forwarded(string latch, string stage, string operand, string register, string producer);
 
@@ -102,6 +105,9 @@ public sealed class EnglishMessages : IMessages
 
     public string BranchOperand(string branch, string register, string producer, string producerStage, string readyAfter) =>
         $"branch in ID: {branch} (ID) needs {register}; {producer} ({producerStage}) has it only after {readyAfter}";
+
+    public string MultiCycle(string instruction, string stage, int remaining) =>
+        $"multi-cycle: {instruction} ({stage}) needs {Count(remaining, "more cycle", "more cycles")}; what is behind it waits";
 
     public string Forwarded(string latch, string stage, string operand, string register, string producer) =>
         $"{latch} -> {stage}.{operand}   {register} from {producer}";

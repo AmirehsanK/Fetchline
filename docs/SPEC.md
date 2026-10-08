@@ -169,15 +169,12 @@ so one dynamic instruction can be followed across cycles.
 | Hazard handling | forwarding / stall only / off | Forwarding from EX/MEM and MEM/WB into EX. Stall only waits in ID until the producer reaches WB. Off leaves data hazards alone, so an instruction takes whatever the register file held, and gives wrong results on purpose; branches and system instructions still flush what is behind them. The run is checked in lockstep, and the trace names the first wrong value |
 | Branch decision | EX / ID | Two squashed instructions, or one with a comparator and forwarding in ID. Decided in ID, a branch waits a cycle for an operand still in EX, and until a load ahead of it has finished MEM |
 | Predictor | not taken / backward-taken static / 1-bit / 2-bit, the last two with a BTB of 16, 64 or 256 entries | The guess is made at fetch. The static rule takes backward conditional branches and every `jal`; a BTB entry is made when a branch is first taken, and is told the outcome at the end of the cycle that decides the branch |
+| Multiply and divide | 1 cycle / N cycles, up to 64 | The instruction keeps EX for N cycles and holds ID and IF behind it, while bubbles go on to MEM: a stall that is not a hazard. Its operands are forwarded in its first cycle and kept |
 
 A guess is wrong only when fetch went somewhere other than where the instruction really leads.
 So a taken branch whose target is the very next instruction costs nothing under any predictor,
 and the check is made for every instruction, not only for branches: after self-modifying code a
 stale BTB entry can send fetch off after an instruction that is no longer a branch.
-
-| Switch | Values (default first) | Effect |
-|---|---|---|
-| Multiply and divide | 1 cycle / N cycles | N cycles holds IF, ID and EX: a stall that is not a data hazard |
 
 Rules, each with a test:
 
@@ -204,8 +201,9 @@ cycle (`Forward`, `Stall`, `Flush`, `BranchResolved`, `RegWrite`, `MemRead`, `Me
 `Trap`). Nothing outside the engine reads the model; everything reads records.
 
 For straight-line code of `N` instructions with forwarding, the run takes `N + 4` cycles plus one
-for each load-use pair. A test holds the pipeline to that on seeded random programs, and to the
-distance formula when forwarding is off.
+for each load-use pair, plus `k - 1` for each multiply or divide when those take `k` cycles. A
+test holds the pipeline to that on seeded random programs, and to the distance formula when
+forwarding is off.
 
 ## 8. Visualizer
 
@@ -369,7 +367,7 @@ every correct configuration, and "off" reports its first wrong value.
 - [x] 6.2 Hazard handling off, and the first-wrong-value report
 - [x] 6.3 Branches decided in ID
 - [x] 6.4 Static and dynamic predictors with a BTB
-- [ ] 6.5 Multi-cycle multiply and divide
+- [x] 6.5 Multi-cycle multiply and divide
 - [ ] 6.6 `fetchline compare`
 - [ ] 6.7 Lockstep across every configuration on random programs with branches
 

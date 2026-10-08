@@ -1,0 +1,20 @@
+                          1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   16
+ 0x00 li   a0, 6          IF   ID   EX   MEM  WB
+ 0x04 li   a1, 7               IF   ID   EX   MEM  WB
+ 0x08 mul  a2, a0, a1               IF   ID   EX   EX   EX   EX   MEM  WB
+ 0x0c addi a3, a2, 1                     IF   ID   ID   ID   ID   EX   MEM  WB
+ 0x10 div  a4, a2, a1                         IF   IF   IF   IF   ID   EX   EX   EX   EX   MEM  WB
+ 0x14 sub  a5, a3, a4                                             IF   ID   ID   ID   ID   EX   MEM  WB
+
+ c5   forward  MEM/WB -> EX.A   a0 from li
+ c5   forward  EX/MEM -> EX.B   a1 from li
+ c5   stall    multi-cycle: mul (EX) needs 3 more cycles; what is behind it waits
+ c6   stall    multi-cycle: mul (EX) needs 2 more cycles; what is behind it waits
+ c7   stall    multi-cycle: mul (EX) needs 1 more cycle; what is behind it waits
+ c9   forward  EX/MEM -> EX.A   a2 from mul
+ c10  forward  MEM/WB -> EX.A   a2 from mul
+ c10  stall    multi-cycle: div (EX) needs 3 more cycles; what is behind it waits
+ c11  stall    multi-cycle: div (EX) needs 2 more cycles; what is behind it waits
+ c12  stall    multi-cycle: div (EX) needs 1 more cycle; what is behind it waits
+ c14  forward  EX/MEM -> EX.B   a4 from div
+ 6 instructions, 16 cycles, CPI 2.67, 6 stalls, 5 forwards

@@ -14,8 +14,11 @@ public class ClosedFormTests
 {
     private static readonly string[] Registers = ["a0", "a1", "a2", "a3", "t0", "t1", "t2", "zero"];
 
+    private static readonly string[] Slow = ["mul", "mulh", "mulhsu", "mulhu", "div", "divu", "rem", "remu"];
+
     /// <summary>One generated instruction: its text, and what it reads and writes.</summary>
-    private sealed record Line(string Text, string? Writes, bool IsLoad, string[] Reads);
+    /// <param name="IsSlow">A multiply or a divide.</param>
+    private sealed record Line(string Text, string? Writes, bool IsLoad, string[] Reads, bool IsSlow = false);
 
     private static Line Random(SeededRandom random)
     {
@@ -32,10 +35,31 @@ public class ClosedFormTests
             6 => new Line($"addi {rd}, {rs1}, {random.Next(-100, 100)}", rd, false, [rs1]),
             7 => new Line($"lui {rd}, {random.Next(0, 0xFFFFF)}", rd, false, []),
             8 => new Line($"slli {rd}, {rs1}, {random.Next(0, 31)}", rd, false, [rs1]),
-            9 => new Line($"mul {rd}, {rs1}, {rs2}", rd, false, [rs1, rs2]),
+            < 11 => new Line($"{random.Pick(Slow)} {rd}, {rs1}, {rs2}", rd, false, [rs1, rs2], IsSlow: true),
             _ => new Line($"add {rd}, {rs1}, {rs2}", rd, false, [rs1, rs2]),
         };
     }
+
+    /// <summary>
+    /// The load-use pairs of a program: a load into a real register followed at once by an
+    /// instruction that reads that register.
+    /// </summary>
+    private static int PairsIn(List<Line> lines)
+    {
+        var pairs = 0;
+        for (var i = 0; i + 1 < lines.Count; i++)
+        {
+            if (lines[i] is { IsLoad: true, Writes: not "zero" } load && lines[i + 1].Reads.Contains(load.Writes))
+            {
+                pairs++;
+            }
+        }
+
+        return pairs;
+    }
+
+    private static string SourceOf(List<Line> lines) =>
+        ".data\ncells: .word 1, 2, 3, 4, 5, 6, 7, 8\n.text\nlui s0, 0x10000\n" + string.Join('\n', lines.Select(line => line.Text));
 
     [Fact]
     public void StraightLineCodeTakesNPlusFourCyclesPlusOnePerLoadUsePair()
@@ -46,20 +70,10 @@ public class ClosedFormTests
         for (var round = 0; round < 1000; round++)
         {
             var lines = Enumerable.Range(0, random.Next(1, 60)).Select(_ => Random(random)).ToList();
-            var source = ".data\ncells: .word 1, 2, 3, 4, 5, 6, 7, 8\n.text\nlui s0, 0x10000\n"
-                + string.Join('\n', lines.Select(line => line.Text));
+            var source = SourceOf(lines);
 
-            // A pair is a load into a real register followed at once by an instruction that
-            // reads that register. The first instruction (lui s0) is not a load.
-            var pairs = 0;
-            for (var i = 0; i + 1 < lines.Count; i++)
-            {
-                if (lines[i] is { IsLoad: true, Writes: not "zero" } load && lines[i + 1].Reads.Contains(load.Writes))
-                {
-                    pairs++;
-                }
-            }
-
+            // The first instruction (lui s0) is not a load, so it is in no pair.
+            var pairs = PairsIn(lines);
             totalPairs += pairs;
             var lockstep = new Lockstep(AssemblerTesting.Assemble(source));
             var records = new List<CycleRecord>();
@@ -86,6 +100,52 @@ public class ClosedFormTests
 
         // Guard the test: the programs must really have contained the thing being counted.
         Assert.True(totalPairs > 500, $"only {totalPairs} load-use pairs in 1,000 programs");
+    }
+
+    [Fact]
+    public void ASlowMultiplierAddsItsExtraCyclesForEachMultiplyAndDivide()
+    {
+        // The same formula with one more term: a multiply or divide that takes k cycles in EX
+        // holds everything behind it for k - 1 of them. The two kinds of wait do not overlap: a
+        // load-use pair is two instructions next to each other, and they wait together.
+        var random = new SeededRandom(0xF37C_6502);
+        var (totalPairs, totalSlow) = (0, 0);
+
+        for (var round = 0; round < 600; round++)
+        {
+            var cycles = random.Next(2, 9);
+            var lines = Enumerable.Range(0, random.Next(1, 60)).Select(_ => Random(random)).ToList();
+            var source = SourceOf(lines);
+            var pairs = PairsIn(lines);
+            var slow = lines.Count(line => line.IsSlow);
+            totalPairs += pairs;
+            totalSlow += slow;
+
+            var lockstep = new Lockstep(AssemblerTesting.Assemble(source), config: new PipelineConfig { MulDivCycles = cycles });
+            var records = new List<CycleRecord>();
+            while (!lockstep.Pipeline.IsFinished && lockstep.Divergence is null)
+            {
+                records.Add(lockstep.Step());
+            }
+
+            var instructions = lines.Count + 1;
+            var expected = instructions + 4 + pairs + ((cycles - 1) * slow);
+            if (lockstep.Divergence is not null || records.Count != expected)
+            {
+                Assert.Fail(
+                    $"seed {random.Seed:X}, round {round}: {instructions} instructions with {pairs} load-use pairs and {slow} " +
+                    $"multiplies and divides of {cycles} cycles took {records.Count} cycles, not {expected}. " +
+                    $"{lockstep.Divergence?.Describe()}\n{source}");
+            }
+
+            var stats = PipelineStats.Of(records);
+            Assert.Equal(pairs, stats.StallsBy(StallCause.LoadUse));
+            Assert.Equal((cycles - 1) * slow, stats.StallsBy(StallCause.MultiCycle));
+            Assert.Equal(pairs + ((cycles - 1) * slow), stats.Stalls);
+            Assert.Equal(0, stats.Flushes);
+        }
+
+        Assert.True(totalPairs > 300 && totalSlow > 2000, $"only {totalPairs} load-use pairs and {totalSlow} multiplies in 600 programs");
     }
 
     [Fact]

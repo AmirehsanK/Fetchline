@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.CommandLine.Parsing;
+using System.Globalization;
 using Fetchline.Core.Pipeline;
 
 namespace Fetchline.Cli;
@@ -33,6 +35,12 @@ internal sealed class PipelineOptions
         DefaultValueFactory = _ => PipelineConfig.Default.BtbEntries,
     };
 
+    private readonly Option<int> _mulDiv = new("--muldiv")
+    {
+        Description = "The number of cycles a multiply or a divide spends in EX.",
+        DefaultValueFactory = _ => PipelineConfig.Default.MulDivCycles,
+    };
+
     public PipelineOptions()
     {
         _hazards.AcceptOnlyFromAmong("forwarding", "stall", "off");
@@ -40,13 +48,29 @@ internal sealed class PipelineOptions
         _predictor.AcceptOnlyFromAmong("not-taken", "backward-taken", "1-bit", "2-bit");
         _btb.Validators.Add(result =>
         {
-            var entries = result.GetValueOrDefault<int>();
-            if (entries is < 1 or > 65536 || (entries & (entries - 1)) != 0)
+            if (NumberOf(result) is { } entries && (entries is < 1 or > 65536 || (entries & (entries - 1)) != 0))
             {
                 result.AddError($"--btb takes a power of two up to 65536, not {entries}.");
             }
         });
+        _mulDiv.Validators.Add(result =>
+        {
+            if (NumberOf(result) is { } cycles && cycles is < 1 or > PipelineConfig.MaxMulDivCycles)
+            {
+                result.AddError($"--muldiv takes a number of cycles from 1 to {PipelineConfig.MaxMulDivCycles}, not {cycles}.");
+            }
+        });
     }
+
+    /// <summary>
+    /// The number an option was given, or null when what it was given is not a number. That
+    /// case is the parser's to report: asking the result for its value here would throw.
+    /// </summary>
+    private static int? NumberOf(OptionResult result) =>
+        result.Tokens.Count == 1
+        && int.TryParse(result.Tokens[0].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number)
+            ? number
+            : null;
 
     public void AddTo(Command command)
     {
@@ -54,6 +78,7 @@ internal sealed class PipelineOptions
         command.Add(_branch);
         command.Add(_predictor);
         command.Add(_btb);
+        command.Add(_mulDiv);
     }
 
     public PipelineConfig Read(ParseResult parse) => new()
@@ -73,5 +98,6 @@ internal sealed class PipelineOptions
             _ => Predictor.NotTaken,
         },
         BtbEntries = parse.GetValue(_btb),
+        MulDivCycles = parse.GetValue(_mulDiv),
     };
 }

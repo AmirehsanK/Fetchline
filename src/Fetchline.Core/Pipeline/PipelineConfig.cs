@@ -69,6 +69,9 @@ public enum Predictor : byte
 /// </summary>
 public sealed record PipelineConfig
 {
+    /// <summary>The longest a multiply or divide can be told to take.</summary>
+    public const int MaxMulDivCycles = 64;
+
     /// <summary>The configuration the textbooks draw first: forwarding, and branches decided in EX.</summary>
     public static PipelineConfig Default { get; } = new();
 
@@ -84,13 +87,30 @@ public sealed record PipelineConfig
     /// </summary>
     public int BtbEntries { get; init; } = 64;
 
-    /// <summary>Throws if the switches cannot be built: a buffer size that is not a power of two.</summary>
+    /// <summary>
+    /// How many cycles a multiply or a divide spends in EX. One is the pipeline of the textbooks,
+    /// whose ALU does anything in a cycle; a real multiplier takes a few, and a divider that
+    /// produces one bit of the quotient at a time takes thirty-two or so. While it works,
+    /// everything behind it waits.
+    /// </summary>
+    public int MulDivCycles { get; init; } = 1;
+
+    /// <summary>
+    /// Throws if the switches cannot be built: a buffer size that is not a power of two, or a
+    /// multiplier that takes no time at all.
+    /// </summary>
     public void Validate()
     {
         if (BtbEntries is < 1 or > 65536 || (BtbEntries & (BtbEntries - 1)) != 0)
         {
             throw new ArgumentException(
                 $"A branch target buffer has a power-of-two number of entries up to 65536, not {BtbEntries}.");
+        }
+
+        if (MulDivCycles is < 1 or > MaxMulDivCycles)
+        {
+            throw new ArgumentException(
+                $"A multiply or divide takes from 1 to {MaxMulDivCycles} cycles, not {MulDivCycles}.");
         }
     }
 

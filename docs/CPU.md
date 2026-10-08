@@ -238,7 +238,98 @@ How it was checked:
   cycles on the pipeline, a CPI of 1.33. A test program cannot check its own timing, so those two
   numbers are pinned by a test.
 
-## 7. Measurements
+## 7. The what-if switches
+
+The pipeline of section 6 is one way to build it. `PipelineConfig` holds the others, and
+`fetchline trace` takes them as `--hazards`, `--branch`, `--predictor`, `--btb` and `--muldiv`. A
+switch changes how long a program takes and never what it computes: built any way but one, the
+pipeline commits the same instructions with the same results as the reference machine, and
+lockstep checks that it does. The one exception is there on purpose.
+
+**Stalling only.** No forwarding paths at all. The only way to a value is the register file, so
+an instruction waits in ID until the one producing its value is in WB, where a write is read in
+the same cycle. A consumer straight behind its producer waits two cycles, one that is two behind
+waits one, and three behind is far enough. A load is waited for like anything else, and when two
+instructions ahead write the same register it is the nearer one that is waited for.
+
+**Off.** Nothing watches the data hazards: an instruction takes whatever the register file held
+when it left ID. Branches and system instructions still flush what is behind them, so the program
+still runs, and computes the wrong answer. The reference machine runs beside it, the first
+instruction on which the two differ is reported with both values, and after that nothing more is
+compared. `examples/sum.s` prints 65 where it should print 55, and both errors can be found by
+hand: the first `add` reads the counter before the `li` ahead of it has written it, and the
+branch at the foot of the loop is always one behind, so the loop goes round an eleventh time.
+
+**Branches decided in ID.** A comparator in ID decides the branch a stage early, so a taken one
+throws away one instruction and not two. The price is that the operands are needed a stage early
+as well. A result being computed in EX is waited for, one cycle, and then taken from EX/MEM into
+ID; a load is waited for until it has finished MEM. So the earlier decision is not always the
+faster one: a loop of `addi`, `addi`, `bnez` that goes round three times takes 18 cycles decided
+in EX and 19 decided in ID, because every `bnez` waits a cycle for the `addi` ahead of it.
+
+**Predictors.** Where to fetch next is guessed at fetch, from the address and the word alone.
+Not-taken always goes straight on. The static rule takes a conditional branch that goes
+backwards and every `jal`, whose target can be read off the word; an indirect jump cannot be
+read off anything. The one-bit and two-bit predictors keep a branch target buffer, direct-mapped
+and tagged: an entry is made the first time a branch is taken, a one-bit entry expects the
+branch to do what it did last time, and a two-bit entry is a saturating counter that takes two
+wrong guesses in a row to change its mind. The buffer is told how a branch came out at the end
+of the cycle that decided it, like any other state.
+
+A guess is wrong only when fetch went somewhere other than where the instruction really leads.
+That one rule covers every case: a taken branch whose target is the next instruction costs
+nothing, a branch guessed taken that falls through is put right the other way, and the question
+is asked of every instruction, so a stale entry that sends fetch off after something that is no
+longer a branch is corrected too.
+
+**Multiply and divide over several cycles.** `--muldiv N` gives a multiply or a divide N cycles
+in EX, as a real multiplier takes a few and a divider that produces a bit at a time takes thirty
+or so. While it works it keeps EX, the two instructions behind it keep ID and IF, and bubbles
+follow the instructions ahead of it through MEM and WB. Nothing is missing and nothing is on a
+wrong path: it is the one stall here that no hazard causes. The operands are forwarded once, in
+the first cycle, and kept, as a multiplier latches its inputs when it starts; by the last cycle
+the instructions they came from have left the pipeline. An instruction in MEM that flushes what
+is behind it can only catch a multiply in its first cycle, since after that there are bubbles
+ahead of it, and then the multiply starts again from the beginning when it is fetched again.
+
+How they were checked:
+
+- **Lockstep in each configuration.** Every example runs in lockstep stalling only, with
+  branches decided in ID, under each of the four predictors with both branch decisions, and with
+  a slow multiplier in five combinations of the other switches. 400 random programs of branches,
+  jumps, loads and stores run in lockstep with branches decided in ID, with forwarding and
+  again stalling only.
+- **Stalling only has a closed form too.** If `d(i)` is the cycle instruction `i` leaves ID and
+  `c(i)` the cycles it spends in EX, then `d(i)` is the larger of `d(i-1) + c(i-1)` and, for each
+  producer `p` of a value it reads, `d(p) + c(p) + 2`; the run ends `c + 2` cycles after the last
+  instruction leaves ID. 500 random programs are held to that with a one-cycle multiplier and
+  500 more with multiplies and divides of one to six cycles.
+- **Off goes wrong, and says so truthfully.** Of 300 random programs of dependent arithmetic
+  more than 250 compute something wrong, and in every one the two records reported really
+  differ and every instruction before them really matched.
+- **The comparator's waits, case by case.** Ten placements of a branch behind the instruction
+  that computes its operand (in EX, in MEM, in WB, an ALU result or a load, one operand or both)
+  give the stalls and forwards worked out by hand for each.
+- **The predictors against a second statement of their rules.** Each rule is written again in
+  the tests as a dictionary by address, fed by the reference machine one branch at a time. On 150
+  random programs of loops, forward branches and jumps, the wrong guesses it counts are the
+  wrong guesses the pipeline made, under all four predictors and both branch decisions.
+- **Loops, by hand.** A loop that goes round five times is guessed wrong 4 times by not-taken,
+  once by backward-taken and twice by either dynamic predictor, and takes 27 + 4 cycles plus two
+  for each wrong guess. In a nest of two loops one bit is wrong 8 times and two bits 6. Two
+  branches 64 bytes apart share an entry of a 16-entry buffer and push each other out: 26 wrong
+  guesses, against 16 with 64 entries.
+- **A slow multiplier adds exactly its own cycles.** With forwarding, straight-line code takes
+  N + 4 cycles, plus one for each load-use pair, plus k - 1 for each multiply or divide of k
+  cycles; 600 random programs are held to that. The same holds for every example with branches
+  decided in EX: the run is longer by k - 1 cycles for each multiply and divide the reference
+  machine completes, for k of 2, 5 and 32. Built the other ways the extra cycles are a ceiling,
+  not a sum, because a wait behind the multiplier can be the same cycles as a wait for a value.
+- **Timing over the official tests again.** With the rule about wrong guesses in place the 66
+  tests take 26,575 cycles where they took 26,581: three jumps in the suite go to the very next
+  instruction, which is where fetch was going anyway.
+
+## 8. Measurements
 
 Taken with `dotnet run -c Release --project bench/Fetchline.Benchmarks -- --filter '*'` on
 8 October 2026: BenchmarkDotNet 0.15.8, default job, .NET 10.0.11, Intel Core i7-9700K at 3.6 GHz,

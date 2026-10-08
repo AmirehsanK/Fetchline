@@ -523,6 +523,7 @@ public class PredictorTests
     [InlineData("--predictor", "psychic")]
     [InlineData("--btb", "100")]
     [InlineData("--btb", "0")]
+    [InlineData("--btb", "plenty")]
     public void AnImpossibleSwitchIsRefused(string option, string value)
     {
         var (exitCode, _, error) = Run("trace", Example("sum.s"), option, value);

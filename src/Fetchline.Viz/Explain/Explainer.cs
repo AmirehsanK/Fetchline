@@ -70,6 +70,13 @@ public sealed class Explainer(StaircaseLayout layout, InstructionLabels labels, 
                         stall.Seq, stall.Producer));
                     break;
 
+                case StallEvent { Cause: StallCause.MultiCycle } stall:
+                    lines.Add(new LogLine(
+                        record.Cycle, LogKind.Stall,
+                        Messages.MultiCycle(Name(stall.Seq), Export.AsciiTrace.Name(stall.Stage), stall.Remaining),
+                        stall.Seq));
+                    break;
+
                 case ForwardEvent forward:
                     lines.Add(new LogLine(
                         record.Cycle, LogKind.Forward,

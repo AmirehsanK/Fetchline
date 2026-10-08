@@ -16,6 +16,7 @@ public class RunTests
         ["load-use.s"] = string.Empty,
         ["forwarding.s"] = string.Empty,
         ["branch.s"] = string.Empty,
+        ["multiply.s"] = string.Empty,
         ["primes.s"] = "1229\n",
     };
 
