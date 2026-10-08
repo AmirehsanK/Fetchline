@@ -27,6 +27,7 @@ internal sealed partial class Assembly
     private static Dictionary<string, Form[]> BuildForms()
     {
         var forms = new Dictionary<string, List<Form>>(StringComparer.Ordinal);
+        AddRealForms(forms);
         return forms.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray(), StringComparer.Ordinal);
     }
 
@@ -60,6 +61,11 @@ internal sealed partial class Assembly
         var form = Array.Find(forms, candidate => Matches(candidate, statement.Operands));
         if (form is null)
         {
+            if (MisspelledRegister(forms, statement.Operands))
+            {
+                return;
+            }
+
             _diagnostics.Error(
                 statement.Span,
                 $"'{statement.Name}' does not take these operands",
@@ -69,6 +75,28 @@ internal sealed partial class Assembly
 
         var count = form.Size?.Invoke(this, statement) ?? form.Count;
         Place(new InstructionItem(statement, form, count), (uint)(4 * count));
+    }
+
+    // A name where a register belongs is nearly always a register spelled wrong ("a8", "A0"),
+    // and saying so is more use than listing the operands the instruction takes.
+    private bool MisspelledRegister(Form[] forms, IReadOnlyList<Operand> operands)
+    {
+        foreach (var form in forms.Where(candidate => candidate.Shape.Length == operands.Count))
+        {
+            for (var i = 0; i < operands.Count; i++)
+            {
+                if (form.Shape[i] == K.Reg && operands[i] is ExprOperand { Value: SymbolExpr symbol })
+                {
+                    _diagnostics.Error(
+                        symbol.Span,
+                        $"'{symbol.Name}' is not a register",
+                        Suggest.Hint(symbol.Name, Registers.AllNames));
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static bool Matches(Form form, IReadOnlyList<Operand> operands)
@@ -190,12 +218,88 @@ internal sealed partial class Assembly
         /// <summary>A CSR written by name or as a number.</summary>
         public long? CsrNumber(int index)
         {
-            if (Operands[index] is ExprOperand { Value: SymbolExpr symbol } && Csr.TryGetNumber(symbol.Name, out var number))
+            if (Operands[index] is ExprOperand { Value: SymbolExpr symbol })
             {
-                return number;
+                if (Csr.TryGetNumber(symbol.Name, out var number))
+                {
+                    return number;
+                }
+
+                if (!assembly._symbols.ContainsKey(symbol.Name))
+                {
+                    Error(symbol.Span, $"unknown CSR '{symbol.Name}'", Suggest.Hint(symbol.Name, Csr.Names.Keys));
+                    return null;
+                }
             }
 
             return Value(index);
+        }
+
+        /// <summary>The operand of lui and auipc: twenty bits, returned already shifted into place.</summary>
+        public long? Upper(int index)
+        {
+            if (Value(index) is not { } value)
+            {
+                return null;
+            }
+
+            if (value is < 0 or > 0xFFFFF)
+            {
+                Error(
+                    Span(index),
+                    $"{value} does not fit in 20 bits (0 to 1048575)",
+                    "to load the upper part of a constant or an address, write %hi(...)");
+                return null;
+            }
+
+            return (int)(value << 12);
+        }
+
+        /// <summary>The five-bit constant of a CSR-immediate instruction.</summary>
+        public long? Zimm(int index)
+        {
+            if (Value(index) is not { } value)
+            {
+                return null;
+            }
+
+            if (value is < 0 or > 31)
+            {
+                Error(Span(index), $"a CSR immediate is 0 to 31, not {value}", "put a larger value in a register first");
+                return null;
+            }
+
+            return value;
+        }
+
+        /// <summary>A fence set: some of the letters i, o, r, w, in that order.</summary>
+        public long? FenceSet(int index)
+        {
+            if (Operands[index] is ExprOperand { Value: SymbolExpr symbol })
+            {
+                var bits = 0;
+                var next = 0;
+                foreach (var letter in symbol.Name)
+                {
+                    var position = "iorw".IndexOf(letter, next);
+                    if (position < 0)
+                    {
+                        bits = 0;
+                        break;
+                    }
+
+                    bits |= 8 >> position;
+                    next = position + 1;
+                }
+
+                if (bits != 0)
+                {
+                    return bits;
+                }
+            }
+
+            Error(Span(index), "a fence set is some of the letters i, o, r, w, in that order", "for example: fence rw, rw");
+            return null;
         }
 
         public void Error(SourceSpan span, string message, string? hint = null) =>
@@ -243,7 +347,7 @@ internal sealed partial class Assembly
             Format.Shift => $"a shift amount is 0 to 31, not {value}",
             Format.B => $"the target is {Signed(value)} bytes away; a branch reaches -4096 to +4094",
             Format.J => $"the target is {Signed(value)} bytes away; a jump reaches -1048576 to +1048574",
-            _ => $"{value} is outside 0 to 4095",
+            _ => $"a CSR number is 0 to 4095, not {value}",
         };
 
         private static string? RangeHint(InstructionDef def, long value) => def switch

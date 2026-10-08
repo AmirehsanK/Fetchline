@@ -7,7 +7,9 @@ public static class Suggest
     /// The candidate closest to <paramref name="name"/>, if one is close enough to be a likely
     /// typo: one edit, or two for a name of six letters or more. Among equally close candidates
     /// the one of the same length wins, since a swapped or mistyped letter is likelier than a
-    /// missing one: <c>adid</c> suggests <c>addi</c>, not <c>add</c>.
+    /// missing one: <c>adid</c> suggests <c>addi</c>, not <c>add</c>. After that the one that
+    /// agrees with the name for longest, then the one whose first different character is nearest:
+    /// <c>a8</c> suggests <c>a7</c>, not <c>a0</c> or <c>s8</c>.
     /// </summary>
     public static string? Closest(string name, IEnumerable<string> candidates)
     {
@@ -34,8 +36,24 @@ public static class Suggest
 
         bool Better(string candidate, string current)
         {
-            var gap = Math.Abs(candidate.Length - name.Length) - Math.Abs(current.Length - name.Length);
-            return gap < 0 || (gap == 0 && string.CompareOrdinal(candidate, current) < 0);
+            var (a, b) = (Closeness(candidate), Closeness(current));
+            return a.CompareTo(b) is var order && order != 0 ? order < 0 : string.CompareOrdinal(candidate, current) < 0;
+        }
+
+        // Smaller is closer, compared field by field.
+        (int LengthGap, int Disagreement, int CharacterGap) Closeness(string candidate)
+        {
+            var common = 0;
+            while (common < name.Length && common < candidate.Length
+                && char.ToLowerInvariant(name[common]) == char.ToLowerInvariant(candidate[common]))
+            {
+                common++;
+            }
+
+            var characterGap = common < name.Length && common < candidate.Length
+                ? Math.Abs(name[common] - candidate[common])
+                : 0;
+            return (Math.Abs(candidate.Length - name.Length), -common, characterGap);
         }
     }
 
