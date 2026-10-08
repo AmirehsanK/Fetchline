@@ -344,7 +344,7 @@ match the closed form on random straight-line code, and lockstep is clean on the
 official tests.
 
 - [x] 5.1 Latches and the two-phase kernel, on hazard-free code
-- [ ] 5.2 Forwarding
+- [x] 5.2 Forwarding
 - [ ] 5.3 The load-use stall
 - [ ] 5.4 Branches and jumps decided in EX
 - [ ] 5.5 System instructions and traps at the commit point

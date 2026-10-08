@@ -132,17 +132,6 @@ public class KernelTests
     }
 
     [Fact]
-    public void WithNoHazardHandlingACloserConsumerReadsAStaleValue()
-    {
-        // Two behind, the consumer is in ID one cycle before the producer writes: it reads the
-        // old value. This is the data hazard; forwarding is what will fix it.
-        var run = RunToEnd("li a0, 5\nnop\naddi a1, a0, 1");
-
-        Assert.Equal(run.CycleOf(1, Stage.WriteBack), run.CycleOf(3, Stage.Decode) + 1);
-        Assert.Equal(1u, run["a1"]);
-    }
-
-    [Fact]
     public void AnEmptyProgramEndsInItsFirstCycle()
     {
         var run = RunToEnd(string.Empty);

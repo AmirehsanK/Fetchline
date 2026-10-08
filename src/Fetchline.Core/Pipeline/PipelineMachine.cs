@@ -90,7 +90,11 @@ public sealed class PipelineMachine
         {
             var instruction = _idEx.Instruction;
             var control = instruction.Control;
-            var (rs1, rs2) = (_idEx.Rs1, _idEx.Rs2);
+
+            // The values read in ID may be out of date: an instruction one or two ahead may have
+            // computed a newer one that is not in the register file yet.
+            var rs1 = Forward(instruction.Rs1, control.UsesRs1, _idEx.Rs1);
+            var rs2 = Forward(instruction.Rs2, control.UsesRs2, _idEx.Rs2);
 
             var alu = Exec.Alu(
                 control.Alu,
@@ -176,6 +180,42 @@ public sealed class PipelineMachine
         }
 
         return record;
+    }
+
+    /// <summary>
+    /// The forwarding unit, for one operand of the instruction in EX. The newest value of a
+    /// register is, in order: the result of the instruction now in MEM, the result of the one now
+    /// in WB, and only then what was read from the register file in ID.
+    /// </summary>
+    /// <param name="used">
+    /// Whether the instruction really reads this register. A field that only happens to hold a
+    /// register number (the constant of a CSR-immediate, say) must not be forwarded to.
+    /// </param>
+    private uint Forward(int register, bool used, uint fromDecode)
+    {
+        if (!used || register == 0)
+        {
+            return fromDecode;
+        }
+
+        if (_exMem.Valid && _exMem.Instruction.Control is { WritesRd: true } producer && _exMem.Instruction.Rd == register)
+        {
+            // In MEM an arithmetic result or a link address is already known. A value that only
+            // exists after MEM (a load) is not, and nothing older may stand in for it.
+            return producer.Wb switch
+            {
+                WbSrc.Alu => _exMem.Alu,
+                WbSrc.PcPlus4 => _exMem.Pc + 4,
+                _ => fromDecode,
+            };
+        }
+
+        if (_memWb.Valid && _memWb.Commit.Register == register)
+        {
+            return _memWb.Commit.Value;
+        }
+
+        return fromDecode;
     }
 
     // The four latches. Each carries the sequence number given at fetch, so that one instruction
