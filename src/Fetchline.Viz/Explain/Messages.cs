@@ -57,6 +57,21 @@ public interface IMessages
     /// <summary>What the mark of a squashed instruction means.</summary>
     string SquashedLegend(string mark);
 
+    /// <summary>In the playground's legend, beside a stage drawn as held: what that means.</summary>
+    string HeldLegend { get; }
+
+    /// <summary>In the playground's legend, beside a stage drawn as squashed.</summary>
+    string ThrownAwayLegend { get; }
+
+    /// <summary>In the playground's legend, beside the line of a forward.</summary>
+    string ForwardedLegend { get; }
+
+    /// <summary>What the pipeline pane says before the first cycle has run.</summary>
+    string ReadyToRun { get; }
+
+    /// <summary>What the pipeline pane says when the source does not assemble.</summary>
+    string NothingToRun { get; }
+
     /// <summary>The diagram shows only some of the cycles.</summary>
     string MoreCycles(ulong shownFrom, ulong shownTo, ulong total);
 
@@ -173,6 +188,17 @@ public sealed class EnglishMessages : IMessages
     }
 
     public string SquashedLegend(string mark) => $"{mark} squashed: fetched, then thrown away";
+
+    public string HeldLegend => "kept for another cycle";
+
+    public string ThrownAwayLegend => "fetched, then thrown away";
+
+    public string ForwardedLegend => "a value handed on";
+
+    public string ReadyToRun => "RV32IM READY\n\nSTEP runs one cycle. RUN goes on to the end.";
+
+    public string NothingToRun =>
+        "The source has to assemble before it can run.\nWhat is wrong with it is listed under the source.";
 
     public string MoreCycles(ulong shownFrom, ulong shownTo, ulong total) => string.Create(
         CultureInfo.InvariantCulture,

@@ -1,0 +1,229 @@
+@using System.Text
+@using Fetchline.Viz.Explain
+@using Fetchline.Viz.Staircase
+@using Microsoft.AspNetCore.Components.Rendering
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+@*
+    The pipeline diagram: instructions down, cycles across, drawn as a grid of characters by
+    StaircaseGrid, which is also what the terminal prints. This component finds out how many
+    characters wide it is, asks for the cycles that fit, and decides how each kind of cell is lit.
+*@
+<section class="pane pipeline" aria-label="Pipeline">
+    <h2 class="pane-title">PIPELINE</h2>
+    <div class="staircase" @ref="_scroller" tabindex="0" style="--stair-cell: @(_grid?.CellWidth ?? 5)ch">
+        @if (_grid is null)
+        {
+            <pre>@(Session.Program is null ? Messages.NothingToRun : Messages.ReadyToRun)</pre>
+        }
+        else
+        {
+            <div class="stair-row stair-head">@Head</div>
+            @foreach (var row in _grid.Rows)
+            {
+                <div class="stair-row" @key="row.Seq">@Row(row)</div>
+            }
+        }
+    </div>
+    @if (_grid is not null && (_grid.HasHeld || _grid.HasSquashed || _grid.Arrows.Count > 0))
+    {
+        <p class="stair-legend">
+            @if (_grid.HasHeld)
+            {
+                <span><span class="inverse">ID</span> @Messages.HeldLegend</span>
+            }
+            @if (_grid.HasSquashed)
+            {
+                <span><span class="squashed">ID</span> -- @Messages.ThrownAwayLegend</span>
+            }
+            @if (_grid.Arrows.Count > 0)
+            {
+                <span><span class="wire">─┐└</span> @Messages.ForwardedLegend</span>
+            }
+        </p>
+    }
+</section>
+
+@code {
+    private ElementReference _scroller;
+    private DotNetObjectReference<PipelinePane>? _self;
+    private StaircaseGrid? _grid;
+    private Session? _drawnFor;
+    private ulong _drawn;
+    private bool _follow;
+
+    // How many characters across the diagram has. A guess until the page has said.
+    private int _characters = 96;
+
+    /// <summary>The run to draw.</summary>
+    [Parameter, EditorRequired]
+    public Session Session { get; set; } = default!;
+
+    /// <summary>How the program's instructions are written; null when there is no program.</summary>
+    [Parameter, EditorRequired]
+    public InstructionLabels? Labels { get; set; }
+
+    [Parameter, EditorRequired]
+    public IMessages Messages { get; set; } = default!;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_drawnFor, Session) || _drawn != Session.Cycle)
+        {
+            Draw();
+        }
+    }
+
+    private void Draw()
+    {
+        (_drawnFor, _drawn, _follow) = (Session, Session.Cycle, true);
+        if (Session.Program is null || Labels is null || Session.Cycle == 0)
+        {
+            _grid = null;
+            return;
+        }
+
+        // The cycles that fit, ending with the one on screen: what just happened is always in view.
+        var window = StaircaseGrid.Fit(Labels.Widths, Session.Cycle, _characters, Session.FirstKept);
+        _grid = StaircaseGrid.Build(Session.Records(window.From, window.To), Labels, window);
+    }
+
+    /// <summary>Called by the page with the width of the diagram, at first and whenever it changes.</summary>
+    [JSInvokable]
+    public void Resized(int characters)
+    {
+        if (characters > 0 && characters != _characters)
+        {
+            _characters = characters;
+            Draw();
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _self = DotNetObjectReference.Create(this);
+            await Js.InvokeVoidAsync("fetchlineStaircase.watch", _scroller, _self);
+        }
+
+        // If the newest rows do not fit either, they are the ones to show.
+        if (_follow)
+        {
+            _follow = false;
+            await Js.InvokeVoidAsync("fetchlineStaircase.follow", _scroller);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_self is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await Js.InvokeVoidAsync("fetchlineStaircase.unwatch", _scroller);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The page is going away, and its observer with it.
+        }
+
+        _self.Dispose();
+    }
+
+    private RenderFragment Head => builder =>
+    {
+        var grid = _grid!;
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", "stair-label");
+        builder.AddContent(2, new string(' ', grid.LabelWidth));
+        builder.CloseElement();
+
+        var text = new StringBuilder();
+        for (var column = 0; column < grid.Columns - 1; column++)
+        {
+            text.Append(grid.Heading(column));
+        }
+
+        builder.AddContent(3, text.ToString());
+
+        // The cycle on screen has its number lit.
+        var now = grid.Heading(grid.Columns - 1);
+        builder.OpenElement(4, "span");
+        builder.AddAttribute(5, "class", "inverse");
+        builder.AddContent(6, now.TrimEnd());
+        builder.CloseElement();
+        builder.AddContent(7, new string(' ', now.Length - now.TrimEnd().Length));
+    };
+
+    private RenderFragment Row(GridRow row) => builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", "stair-label");
+        builder.AddContent(2, row.Label);
+        builder.CloseElement();
+
+        // Most cells are plain text and are written out together; only a cell that is lit some
+        // other way, or the cycle on screen, gets an element of its own.
+        var plain = new StringBuilder();
+        void Flush()
+        {
+            if (plain.Length > 0)
+            {
+                builder.AddContent(3, plain.ToString());
+                plain.Clear();
+            }
+        }
+
+        for (var column = 0; column < row.Cells.Count; column++)
+        {
+            var cell = row.Cells[column];
+            var now = column == row.Cells.Count - 1;
+            var style = cell.Kind switch
+            {
+                CellKind.Held => "inverse",
+                CellKind.Squashed => "squashed",
+                CellKind.Gone => "dim",
+                _ => now ? "now" : null,
+            };
+            var wired = cell.Tail.Trim().Length > 0;
+            if (style is null && !wired)
+            {
+                plain.Append(cell.Text).Append(cell.Tail);
+                continue;
+            }
+
+            Flush();
+            if (style is null)
+            {
+                builder.AddContent(4, cell.Text);
+            }
+            else
+            {
+                builder.OpenElement(5, "span");
+                builder.AddAttribute(6, "class", style);
+                builder.AddContent(7, cell.Text);
+                builder.CloseElement();
+            }
+
+            if (wired)
+            {
+                builder.OpenElement(8, "span");
+                builder.AddAttribute(9, "class", "wire");
+                builder.AddContent(10, cell.Tail);
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.AddContent(11, cell.Tail);
+            }
+        }
+
+        Flush();
+    };
+}

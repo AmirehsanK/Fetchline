@@ -30,8 +30,6 @@ public static class AsciiTrace
     /// <summary>What marks the cycle after an instruction was thrown away.</summary>
     public const string SquashedMark = "--";
 
-    private const int Gap = 5;
-
     /// <param name="divergence">
     /// The first instruction on which the pipeline differed from the reference machine, when the
     /// run was checked and they did differ. It is reported under the totals.
@@ -49,54 +47,13 @@ public static class AsciiTrace
         var from = Math.Max(1, options.From);
         var to = options.Cycles == 0 ? layout.Cycles : Math.Min(layout.Cycles, from + options.Cycles - 1);
 
-        // A row is shown if any of its cells, or the mark of its being squashed, is in the window.
-        var rows = layout.Rows
-            .Where(row => row.FirstCycle <= to && row.LastCycle + (row.WasSquashed ? 1ul : 0) >= from)
-            .Select(row => (Row: row, Text: labels.Describe(row.Pc, row.Raw)))
-            .ToList();
-
-        var sawSquash = false;
-        if (rows.Count > 0)
+        // The diagram is the grid the playground draws, without the arrows it adds for forwards:
+        // one piece of code decides where every character goes, here and there.
+        var grid = StaircaseGrid.Build(layout, records, labels, from, to, arrows: false);
+        var sawSquash = grid.HasSquashed;
+        if (grid.Rows.Count > 0)
         {
-            var addressWidth = Math.Max(2, rows.Max(row => row.Row.Pc.ToString("x", CultureInfo.InvariantCulture).Length));
-            var mnemonicWidth = Math.Max(5, rows.Max(row => row.Text.Mnemonic.Length) + 1);
-            var textWidth = rows.Max(row => row.Text.Operands.Length == 0
-                ? row.Text.Mnemonic.Length
-                : mnemonicWidth + row.Text.Operands.Length);
-            var cellWidth = Math.Max(5, to.ToString(CultureInfo.InvariantCulture).Length + 1);
-            var margin = 1 + 2 + addressWidth + 1 + textWidth + Gap;
-
-            var header = new StringBuilder().Append(' ', margin);
-            for (var cycle = from; cycle <= to; cycle++)
-            {
-                header.Append(cycle.ToString(CultureInfo.InvariantCulture).PadRight(cellWidth));
-            }
-
-            text.Append(header.ToString().TrimEnd()).Append('\n');
-
-            foreach (var (row, description) in rows)
-            {
-                var line = new StringBuilder(" 0x")
-                    .Append(row.Pc.ToString("x", CultureInfo.InvariantCulture).PadLeft(addressWidth, '0'))
-                    .Append(' ')
-                    .Append(description.Operands.Length == 0
-                        ? description.Mnemonic
-                        : description.Mnemonic.PadRight(mnemonicWidth) + description.Operands);
-                line.Append(' ', margin - line.Length);
-
-                for (var cycle = from; cycle <= to; cycle++)
-                {
-                    var cell = row.At(cycle) is { } occupied ? Name(occupied.Stage)
-                        : row.WasSquashed && cycle == row.LastCycle + 1 ? SquashedMark
-                        : string.Empty;
-                    sawSquash |= cell == SquashedMark;
-                    line.Append(cell.PadRight(cellWidth));
-                }
-
-                text.Append(line.ToString().TrimEnd()).Append('\n');
-            }
-
-            text.Append('\n');
+            text.Append(grid.ToText()).Append('\n');
         }
 
         if (options.Log)

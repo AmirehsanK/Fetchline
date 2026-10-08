@@ -1,6 +1,5 @@
 @using Fetchline.Viz.Editor
 @using Fetchline.Viz.Explain
-@using Fetchline.Viz.Export
 
 @*
     What the tube shows: a status line, the panes, and a row of soft keys. All of it is drawn
@@ -15,10 +14,7 @@
 
     <SourcePane View="_source" Record="_session.Record" OnEdit="Edit" />
 
-    <section class="pane pipeline" aria-label="Pipeline">
-        <h2 class="pane-title">PIPELINE</h2>
-        <pre class="pane-body" tabindex="0">@Trace</pre>
-    </section>
+    <PipelinePane Session="_session" Labels="_labels" Messages="Messages" />
 
     <footer class="softkeys" role="toolbar" aria-label="Run">
         <button type="button" class="softkey" disabled="@(!_session.CanStep)" @onclick="Run">
@@ -40,13 +36,11 @@
     // A run with no end is stopped after this many cycles; RUN again carries on.
     private const int MostCyclesAtOnce = 200_000;
 
-    // How many cycles the diagram shows: the cycle on screen and the ones leading up to it.
-    private const ulong Window = 24;
-
     private static readonly IMessages Messages = EnglishMessages.Instance;
 
     private Session _session = default!;
     private SourceView _source = default!;
+    private InstructionLabels? _labels;
 
     protected override void OnInitialized() => Edit(Examples.Read("load-use.s"));
 
@@ -54,6 +48,7 @@
     {
         _session = new Session(text, _session?.Config);
         _source = SourceView.Of(_session.Assembly);
+        _labels = _session.Program is { } program ? new InstructionLabels(program) : null;
     }
 
     private void Run() => _session.Run(MostCyclesAtOnce);
@@ -68,24 +63,4 @@
         _session.Program is null ? "NOTHING TO RUN"
         : _session.IsFinished ? $"CYCLE {_session.Cycle}  ENDED"
         : $"CYCLE {_session.Cycle}";
-
-    private string Trace
-    {
-        get
-        {
-            if (_session.Program is not { } program)
-            {
-                return "The source has to assemble before it can run.\nWhat is wrong with it is listed under the source.";
-            }
-
-            if (_session.Cycle == 0)
-            {
-                return "RV32IM READY\n\nSTEP runs one cycle. RUN goes to the end.";
-            }
-
-            var from = _session.Cycle > Window ? _session.Cycle - Window + 1 : 1;
-            var records = _session.Records(from, _session.Cycle);
-            return AsciiTrace.Write(program, records, Messages, new TraceOptions { From = from, Cycles = Window }, _session.Divergence);
-        }
-    }
 }

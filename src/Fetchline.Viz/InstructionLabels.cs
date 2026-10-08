@@ -3,6 +3,12 @@ using Fetchline.Core.Isa;
 
 namespace Fetchline.Viz;
 
+/// <summary>The widths of the label column of a diagram, in characters.</summary>
+/// <param name="Address">The hex digits of an address.</param>
+/// <param name="Mnemonic">The column mnemonics are padded to, their trailing space included.</param>
+/// <param name="Text">The longest instruction, mnemonic and operands together.</param>
+public readonly record struct LabelWidths(int Address, int Mnemonic, int Text);
+
 /// <summary>
 /// How instructions and registers are written in a diagram. Where an instruction came from one
 /// line of source, it is shown as that line was written: <c>bnez t0, loop</c>, not the address the
@@ -24,6 +30,40 @@ public sealed class InstructionLabels
 
     /// <summary>Whether the program writes its registers as <c>a0</c> or as <c>x10</c>.</summary>
     public RegisterStyle Registers { get; }
+
+    /// <summary>
+    /// The widths that fit every instruction in the program: the digits of the largest address,
+    /// the column the mnemonics are padded to, and the longest instruction as text. A diagram
+    /// that is laid out with these keeps its columns where they are as rows come and go.
+    /// </summary>
+    public LabelWidths Widths => _widths ??= Measure();
+
+    private LabelWidths? _widths;
+
+    private LabelWidths Measure()
+    {
+        var (address, mnemonic, operands) = (2, 4, new List<DisassembledLine>());
+        if (_program.Text is { } text)
+        {
+            for (var pc = text.Address; pc - text.Address + 4 <= text.Size; pc += 4)
+            {
+                if (_program.TryReadWord(pc, out var word))
+                {
+                    var line = Describe(pc, word);
+                    operands.Add(line);
+                    mnemonic = Math.Max(mnemonic, line.Mnemonic.Length);
+                    address = Math.Max(address, pc.ToString("x", System.Globalization.CultureInfo.InvariantCulture).Length);
+                }
+            }
+        }
+
+        // A mnemonic is followed by at least one space before its operands.
+        var column = mnemonic + 1;
+        var longest = operands.Count == 0 ? column : operands.Max(line => line.Operands.Length == 0
+            ? line.Mnemonic.Length
+            : column + line.Operands.Length);
+        return new LabelWidths(address, column, longest);
+    }
 
     /// <summary>The instruction at an address, as text.</summary>
     public DisassembledLine Describe(uint pc, uint raw)

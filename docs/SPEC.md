@@ -244,6 +244,12 @@ running again from reset, which gives the same run because the machine has no ot
   each line is in. No editor library.
 - **Staircase:** instructions down, cycles across, as in the textbooks. Held stages, bubbles and
   squashed instructions are drawn differently, and forwarding arrows run from producer to consumer.
+  It is a grid of characters made by `StaircaseGrid`, which also makes the diagram of
+  `fetchline trace`: without its arrows the two are the same text. A forward leaves its producer
+  at the end of one cycle and enters its consumer at the start of the next, so its line runs down
+  the last character of the earlier cycle's cells (`MEM─┐` above, `└EX` below). The pane shows as
+  many of the latest cycles as fit across it, the cycle on screen as a lit column at the right,
+  and on a narrow screen labels an instruction by its mnemonic alone.
 - **Datapath:** an SVG of the five stages, latches, multiplexers, ALU, forwarding unit and hazard
   unit. The paths active in the current cycle light up, with values on hover. It is described as
   data (nodes, wires, ids), not drawn by hand in markup.
@@ -408,7 +414,7 @@ download size is measured and written down.
 - [x] 7.1 The session: assemble, step, step back, run and reset, with no user interface in it
 - [x] 7.2 The Blazor WebAssembly project and the display: bezel, phosphor, the plain switch
 - [x] 7.3 The editor: the assembler's own lexer for highlighting, its diagnostics, the gutter
-- [ ] 7.4 The staircase as a character grid, with held and squashed marks and forwarding arrows
+- [x] 7.4 The staircase as a character grid, with held and squashed marks and forwarding arrows
 - [ ] 7.5 The hazard log, and jumping to the cycle of a line
 - [ ] 7.6 The state panes: registers, memory, console and counters
 - [ ] 7.7 The controls, the function keys and the start-up sequence

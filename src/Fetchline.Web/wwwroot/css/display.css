@@ -286,6 +286,77 @@ body {
 
 .pipeline {
     grid-area: pipeline;
+    grid-template-rows: minmax(0, 1fr) auto;
+}
+
+/* ---- The pipeline diagram ------------------------------------------------------------------------- */
+
+/*
+    A grid of characters, scrolled so that the cycle on screen is in view. The cycle numbers stay
+    at the top and the instructions at the left however far it is scrolled.
+*/
+.staircase {
+    min-height: 6lh;
+    max-height: 70dvh;
+    overflow: auto;
+    scrollbar-color: var(--dim) transparent;
+    scrollbar-width: thin;
+}
+
+@media (min-width: 900px) and (min-height: 560px) {
+    .staircase {
+        max-height: none;
+    }
+}
+
+/*
+    The cycle on screen is always the last column, and is a lit band down the diagram, as the
+    cursor is on an analyzer's trace. It is the row's own background, one cell wide at its right
+    end, so that it is unbroken from row to row.
+*/
+.stair-row {
+    width: max-content;
+    white-space: pre;
+    background: linear-gradient(to left, rgb(var(--halo) / 0.13) 0 var(--stair-cell, 5ch), transparent var(--stair-cell, 5ch));
+}
+
+.stair-label {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--unlit);
+}
+
+.stair-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--unlit);
+    color: var(--dim);
+}
+
+.now {
+    color: var(--bright);
+}
+
+.squashed {
+    color: var(--dim);
+    text-decoration: line-through;
+}
+
+/* The line of a forward is the brightest thing in the diagram: it is what there is to see. */
+.wire {
+    color: var(--bright);
+}
+
+.stair-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 3ch;
+    margin: 0.3lh 0 0;
+    padding-top: 0.3lh;
+    border-top: 1px solid var(--dim);
+    color: var(--dim);
 }
 
 /* ---- The editor --------------------------------------------------------------------------------- */
