@@ -334,7 +334,7 @@ pass, with the `rv32mi` tests that fit a machine-mode core, and CI runs them.
 
 - [x] 4.1 The CSR file
 - [x] 4.2 Traps, `mret` and the bare environment
-- [ ] 4.3 `tohost`, the conformance project and `fetchline test`
+- [x] 4.3 `tohost`, the conformance project and `fetchline test`
 - [ ] 4.4 The objdump cross-check of the decoder, disassembler and assembler
 - [ ] 4.5 CI runs the official tests
 

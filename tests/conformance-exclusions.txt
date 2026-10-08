@@ -1,0 +1,9 @@
+# Official tests this core is not expected to pass, and why.
+#
+# One test per line: its name, then the reason. Every other test under
+# tests/vectors/riscv-tests/elf must pass. A test listed here must fail: if it
+# starts passing, `fetchline test` and the conformance tests say so, and its
+# line has to go.
+
+rv32mi-p-breakpoint   needs the debug trigger registers (tselect, tdata1), which this core does not have
+rv32mi-p-pmpaddr      needs physical memory protection (pmpaddr0, pmpcfg0), which this core does not have

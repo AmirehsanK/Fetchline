@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <!-- The tests run commands in-process and compare what they print. -->
+    <InternalsVisibleTo Include="Fetchline.Conformance" />
     <InternalsVisibleTo Include="Fetchline.Tests" />
   </ItemGroup>
 

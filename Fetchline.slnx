@@ -7,6 +7,7 @@
     <Project Path="src/Fetchline.Core/Fetchline.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Fetchline.Conformance/Fetchline.Conformance.csproj" />
     <Project Path="tests/Fetchline.Tests/Fetchline.Tests.csproj" />
   </Folder>
 </Solution>
