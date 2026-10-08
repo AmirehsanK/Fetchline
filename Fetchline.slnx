@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Fetchline.Core/Fetchline.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Fetchline.Tests/Fetchline.Tests.csproj" />
+  </Folder>
+</Solution>

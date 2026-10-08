@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The engine. It has no package references, does no I/O, reads no clock and uses no unseeded
+    randomness, so it behaves the same in the tests, the command line and the browser. A test
+    (CorePurityTests) reads this assembly's metadata and fails if that stops being true.
+  -->
+  <PropertyGroup>
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+</Project>
