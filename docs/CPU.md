@@ -171,7 +171,74 @@ How it was checked:
   that the instruction that trapped wrote nothing, and that code which rewrites itself is decoded
   again.
 
-## 6. Measurements
+## 6. The pipeline
+
+Five stages, IF, ID, EX, MEM and WB, with the four latches between them. Each latch carries the
+sequence number its instruction was given at fetch, so one dynamic instruction can be followed
+from cycle to cycle; an instruction that is fetched again after a flush gets a new number, and a
+new row in the diagram.
+
+**The kernel is two-phase.** In a cycle, every stage first works out its result from the latches
+as they stand, in the order WB, MEM, EX, ID, IF, and then all the latches take their new values
+at once. The backwards order is what lets a late stage act on an early one within the cycle, as a
+wire would: WB writes the register file before ID reads it, a redirect computed in EX reaches IF,
+a flush decided in MEM reaches everything behind it. Nothing else crosses between stages, so
+there are no accidents of evaluation order.
+
+**Forwarding.** An operand of the instruction in EX is the newest value there is: the result in
+EX/MEM if the instruction one ahead writes that register, else the one in MEM/WB, else what ID
+read. An operand the instruction does not really use is left alone, so `addi x6, x7, 4` after a
+write to `x4` forwards nothing. Forwarding costs no cycles.
+
+**The load-use stall.** A loaded value does not exist until the end of MEM, one cycle too late for
+the next instruction to take it into EX. When the instruction in EX is a load whose register the
+instruction in ID really uses, ID keeps its instruction, IF keeps the one behind, and a bubble
+goes into EX. The instruction waiting in IF is not fetched again; it keeps its number.
+
+**Branches.** Fetch carries on in a straight line. A branch or jump that is taken in EX throws
+away the two instructions fetched behind it. A redirect outranks a stall in ID, and if fetch had
+run off the end of the code on the wrong path, that is forgotten.
+
+**The commit point.** `Hart.Complete` is called from MEM, with the operands the pipeline's own
+plumbing delivered. A system instruction, a trap or a stop takes effect there, and the three
+instructions behind it are squashed and fetched again from wherever it says control goes. So a
+system call cannot run on a wrong path, an instruction that traps has changed nothing, and the
+instruction after a CSR read sees what was read. An instruction that stops the machine still
+travels to WB, and the run ends in the cycle it leaves; running off the end of the code ends the
+run in the cycle the last instruction leaves WB.
+
+**Records and events.** A cycle produces a record: what is in each stage and whether it is held or
+squashed, the commit record of the instruction leaving WB, and events. An event is said by the
+logic that did the thing: the forwarding unit says what it forwarded, from which latch, to which
+operand, from which instruction; the hazard unit says what it stalled and why. Nothing is worked
+out afterwards from what the stages held. The diagram, the counters and the sentences of the log
+are all made from the records, so they cannot disagree with the engine or with each other.
+
+How it was checked:
+
+- **Lockstep.** The pipeline runs with the reference machine beside it; the reference is stepped
+  once for each instruction the pipeline commits and the two commit records must be equal. Both
+  come out of the same `Hart.Complete`, so a difference can only be the pipeline's plumbing. The
+  cycle counter is the one permitted difference (the pipeline's reading is handed across); the
+  instruction counter must agree exactly. Lockstep is clean on every example, on 300 random
+  programs of dependent arithmetic, 300 with loads and stores, 400 with forward branches and
+  jumps, and on all 66 official tests, including the two excluded ones, which fail the same way
+  on both machines.
+- **The closed form.** For straight-line code the length of a run is known without running it:
+  N + 4 cycles, plus one for each load whose value the very next instruction uses. 1,000 random
+  programs are held to it, with the pairs counted from the program text, not from the engine.
+- **The textbook diagrams.** The load-use sequence, the forwarding sequence and a taken branch
+  give the diagrams the textbooks draw; they are pinned as golden files under `tests/golden`,
+  and the load-use one is the diagram in the specification, character for character.
+- **Determinism.** A run can be hashed field by field with FNV-1a. The same program gives the
+  same number every time, and the number for `examples/load-use.s` is pinned. Replaying a program
+  to a cycle gives the state, the events and the commit that were there the first time, which is
+  what makes stepping back a replay.
+- **Timing over the whole suite.** The 66 official tests complete 19,982 instructions in 26,581
+  cycles on the pipeline, a CPI of 1.33. A test program cannot check its own timing, so those two
+  numbers are pinned by a test.
+
+## 7. Measurements
 
 Taken with `dotnet run -c Release --project bench/Fetchline.Benchmarks -- --filter '*'` on
 8 October 2026: BenchmarkDotNet 0.15.8, default job, .NET 10.0.11, Intel Core i7-9700K at 3.6 GHz,

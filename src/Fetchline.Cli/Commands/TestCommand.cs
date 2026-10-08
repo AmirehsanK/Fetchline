@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Fetchline.Core.Elf;
 using Fetchline.Core.Machine;
+using Fetchline.Core.Pipeline;
 using Fetchline.Core.Trace;
 
 namespace Fetchline.Cli.Commands;
@@ -26,10 +27,14 @@ internal static class TestCommand
             DefaultValueFactory = _ => DefaultBudget,
         };
         var verbose = new Option<bool>("--verbose", "-v") { Description = "List the tests that pass as well." };
+        var pipeline = new Option<bool>("--pipeline")
+        {
+            Description = "Run on the pipeline, checked against the reference machine instruction by instruction.",
+        };
 
         var command = new Command("test", "Run a folder of official test programs.")
         {
-            directory, exclusions, budget, verbose,
+            directory, exclusions, budget, verbose, pipeline,
         };
 
         command.SetAction(parse =>
@@ -65,7 +70,7 @@ internal static class TestCommand
                     continue;
                 }
 
-                var verdict = Run(bytes, parse.GetValue(budget));
+                var verdict = Run(bytes, parse.GetValue(budget), parse.GetValue(pipeline));
                 var isExcluded = excluded.Remove(file.Name, out var reason);
 
                 // An excluded test is still run. If it passes, the list is out of date, and that
@@ -107,7 +112,8 @@ internal static class TestCommand
                 return FetchlineCommand.Unusable;
             }
 
-            stdout.WriteLine($"{passed} passed, {failed} failed, {skipped} excluded");
+            var machine = parse.GetValue(pipeline) ? "pipeline, in lockstep with the reference machine" : "reference machine";
+            stdout.WriteLine($"{passed} passed, {failed} failed, {skipped} excluded ({machine})");
             return failed == 0 ? FetchlineCommand.Ok : FetchlineCommand.Failed;
         });
 
@@ -133,7 +139,7 @@ internal static class TestCommand
         return excluded;
     }
 
-    private static TestVerdict Run(byte[] elf, ulong budget)
+    private static TestVerdict Run(byte[] elf, ulong budget, bool onPipeline)
     {
         if (!ElfFile.TryRead(elf, out var program, out var error))
         {
@@ -141,7 +147,26 @@ internal static class TestCommand
         }
 
         // The tests are bare-metal programs whether or not their symbols survived.
-        var machine = new ReferenceMachine(program!, TextWriter.Null, ExecutionEnvironment.Bare);
-        return TestVerdict.Of(machine.Run(budget));
+        if (!onPipeline)
+        {
+            var machine = new ReferenceMachine(program!, TextWriter.Null, ExecutionEnvironment.Bare);
+            return TestVerdict.Of(machine.Run(budget));
+        }
+
+        var lockstep = new Lockstep(program!, TextWriter.Null, ExecutionEnvironment.Bare);
+        lockstep.Pipeline.Recording = false;
+        // The budget is counted here and not read from the machine: a test may write the
+        // counters, and rv32mi-p-instret_overflow sets one to nearly its largest value.
+        CycleRecord? last = null;
+        for (ulong cycle = 0; cycle < 4 * budget && !lockstep.Pipeline.IsFinished && lockstep.Divergence is null; cycle++)
+        {
+            last = lockstep.Step();
+        }
+
+        // A test that fails the same way on both machines has still failed; a test on which the
+        // machines differ has failed whatever it wrote to tohost.
+        return lockstep.Divergence is { } divergence
+            ? new TestVerdict(false, "the machines disagree at " + divergence.Describe())
+            : TestVerdict.Of((last?.End ?? last?.Commit).GetValueOrDefault());
     }
 }

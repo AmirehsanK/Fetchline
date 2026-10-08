@@ -351,7 +351,7 @@ official tests.
 - [x] 5.6 Cycle records and events
 - [x] 5.7 The lockstep checker
 - [x] 5.8 The staircase layout, the ASCII writer and `fetchline trace`, with golden diagrams
-- [ ] 5.9 Closed-form cycle counts on seeded random programs; the official tests in lockstep
+- [x] 5.9 Closed-form cycle counts on seeded random programs; the official tests in lockstep
 
 **M6. Hazard modes, ID branches, predictors, multi-cycle multiply and divide;
 `fetchline compare`.** Done when the official tests and 2,000 random programs pass lockstep in

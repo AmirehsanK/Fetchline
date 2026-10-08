@@ -43,7 +43,13 @@ jobs:
 
       # The same official tests through the command line, as a user would run them. It exits
       # non-zero if a test fails, or if an excluded test has started to pass.
-      - name: Official RISC-V tests
+      - name: Official RISC-V tests on the reference machine
         run: >-
           dotnet run --project src/Fetchline.Cli -c Release --no-build --
           test tests/vectors/riscv-tests/elf --exclusions tests/conformance-exclusions.txt
+
+      # And on the pipeline, with the reference machine checking every instruction it commits.
+      - name: Official RISC-V tests on the pipeline, in lockstep
+        run: >-
+          dotnet run --project src/Fetchline.Cli -c Release --no-build --
+          test tests/vectors/riscv-tests/elf --exclusions tests/conformance-exclusions.txt --pipeline
