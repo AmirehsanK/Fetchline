@@ -581,6 +581,40 @@ body {
     color: var(--dim);
 }
 
+/* ---- The comparison --------------------------------------------------------------------------------- */
+
+/* The table the terminal prints, a line at a time; a line for a configuration can be chosen. */
+.compare {
+    white-space: pre;
+}
+
+.compare-line {
+    min-height: 1lh;
+}
+
+.compare-row {
+    display: block;
+    min-width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    text-shadow: inherit;
+    white-space: pre;
+    cursor: pointer;
+}
+
+.compare-row:hover {
+    background: rgb(var(--halo) / 0.13);
+}
+
+.compare-foot {
+    margin: 1lh 0 0;
+    white-space: normal;
+}
+
 .stair-legend {
     display: flex;
     flex-wrap: wrap;

@@ -1,0 +1,47 @@
+@using Fetchline.Core.Asm
+@using Fetchline.Viz.Explain
+@using Fetchline.Viz.Export
+
+@*
+    The program on the pipeline built every way: the table "fetchline compare" prints, filled in
+    a row at a time as each run finishes. A row is a button that builds the pipeline that way.
+*@
+<section class="pane pipeline" aria-label="@Messages.CompareTitle">
+    <h2 class="pane-title">@Messages.CompareTitle</h2>
+    <div class="pane-body compare" tabindex="0">
+        @foreach (var line in CompareTable.Lines(Program, Job.Rows, Messages))
+        {
+            @if (line.Row is { } row)
+            {
+                <button type="button" class="compare-row @(row.Config == Current ? "log-now" : null)"
+                        aria-current="@(row.Config == Current ? "true" : null)"
+                        @onclick="() => OnChoose.InvokeAsync(row.Config)">@line.Text</button>
+            }
+            else
+            {
+                <div class="compare-line">@line.Text</div>
+            }
+        }
+        <p class="dim compare-foot">@(Job.IsDone ? Messages.CompareHint : Messages.Comparing(Job.Rows.Count, Job.Total))</p>
+    </div>
+</section>
+
+@code {
+    /// <summary>The comparison, finished or still being made.</summary>
+    [Parameter, EditorRequired]
+    public CompareJob Job { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Program Program { get; set; } = default!;
+
+    /// <summary>How the pipeline is built now: its row is lit.</summary>
+    [Parameter, EditorRequired]
+    public PipelineConfig Current { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IMessages Messages { get; set; } = default!;
+
+    /// <summary>Called with a row's configuration when the row is chosen.</summary>
+    [Parameter]
+    public EventCallback<PipelineConfig> OnChoose { get; set; }
+}

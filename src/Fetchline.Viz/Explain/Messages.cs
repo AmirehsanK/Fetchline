@@ -117,6 +117,20 @@ public interface IMessages
     /// <summary>The speed key: its name with the pace it is set to, or with the word for flat out.</summary>
     string SpeedKey(string pace);
 
+    /// <summary>The key that shows the comparison in place of the diagram, and the one that brings the diagram back.</summary>
+    string CompareKey { get; }
+
+    string DiagramKey { get; }
+
+    /// <summary>The title of the pane the comparison is shown in.</summary>
+    string CompareTitle { get; }
+
+    /// <summary>Under a comparison that is still being made: how far it has got.</summary>
+    string Comparing(int done, int total);
+
+    /// <summary>Under a finished comparison: what its rows are for.</summary>
+    string CompareHint { get; }
+
     /// <summary>What the soft keys are, for a reader who cannot see them as a row.</summary>
     string Controls { get; }
 
@@ -350,6 +364,17 @@ public sealed class EnglishMessages : IMessages
     public string ResetKey => "RESET";
 
     public string SpeedKey(string pace) => pace.Length == 0 ? "SPEED MAX" : $"SPEED {pace}";
+
+    public string CompareKey => "COMPARE";
+
+    public string DiagramKey => "DIAGRAM";
+
+    public string CompareTitle => "COMPARE";
+
+    public string Comparing(int done, int total) =>
+        string.Create(CultureInfo.InvariantCulture, $"Running it every way: {done} of {total} done.");
+
+    public string CompareHint => "Choose a row to build the pipeline that way.";
 
     public string Controls => "Run controls";
 

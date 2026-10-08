@@ -2,9 +2,9 @@ namespace Fetchline.Viz;
 
 /// <summary>
 /// How fast a run goes when it is left to go on its own: so many cycles, then a pause so long,
-/// and again. The slow paces are for watching one cycle follow another. The fastest does a
-/// slice of many cycles between pauses, and the pause is only there to let the page be drawn
-/// and the keys be heard.
+/// and again. The slow paces are for watching one cycle follow another. The fastest runs in
+/// bursts, one after another for as long as whoever is driving it can spare before the page
+/// has to be drawn again, and its pause is only there to let that happen and the keys be heard.
 /// </summary>
 /// <param name="Name">What the pace is called on its key: cycles a second, or the word for flat out.</param>
 /// <param name="Cycles">How many cycles are run at a time.</param>
@@ -17,7 +17,7 @@ public readonly record struct RunPace(string Name, int Cycles, int Milliseconds)
         new("1/s", 1, 1000),
         new("4/s", 1, 250),
         new("16/s", 1, 62),
-        new(string.Empty, 5000, 1),
+        new(string.Empty, 1000, 1),
     ];
 
     /// <summary>The pace a run starts at: fast enough not to bore, slow enough to follow.</summary>

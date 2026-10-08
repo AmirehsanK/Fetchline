@@ -67,18 +67,51 @@ public static class Comparison
     public static ComparisonRow Run(
         Program program, PipelineConfig config, ulong maxCycles, ExecutionEnvironment? environment = null)
     {
-        var lockstep = new Lockstep(program, TextWriter.Null, environment, config);
-        var machine = lockstep.Pipeline;
-        var stats = new PipelineStats();
+        var run = new ComparisonRun(program, config, environment);
+        run.Advance(maxCycles);
+        return run.Row;
+    }
+}
 
-        // The cycles are counted here, not read from the machine: a program may write its counters.
-        CycleRecord? last = null;
-        for (ulong cycle = 0; cycle < maxCycles && machine.Stopped == StopReason.None; cycle++)
+/// <summary>
+/// One program on a pipeline built one way, run a stretch at a time. A comparison of many
+/// configurations in a browser is made of these, so that it can stop between stretches to let
+/// the page be drawn, and can be abandoned half way.
+/// </summary>
+public sealed class ComparisonRun
+{
+    private readonly Lockstep _lockstep;
+    private readonly PipelineStats _stats = new();
+    private CycleRecord? _last;
+
+    public ComparisonRun(Program program, PipelineConfig config, ExecutionEnvironment? environment = null)
+    {
+        Config = config;
+        _lockstep = new Lockstep(program, TextWriter.Null, environment, config);
+    }
+
+    public PipelineConfig Config { get; }
+
+    /// <summary>The run has ended, or paused at an <c>ebreak</c>, which for a comparison is the end.</summary>
+    public bool HasEnded => _lockstep.Pipeline.Stopped != StopReason.None;
+
+    /// <summary>How many cycles have been run. Counted here: a program may write its own counter.</summary>
+    public ulong Cycles => _stats.Cycles;
+
+    /// <summary>Runs for up to so many more cycles, and says how many it ran.</summary>
+    public ulong Advance(ulong cycles)
+    {
+        ulong ran = 0;
+        for (; ran < cycles && !HasEnded; ran++)
         {
-            last = lockstep.Step();
-            stats.Add(last);
+            _last = _lockstep.Step();
+            _stats.Add(_last);
         }
 
-        return new ComparisonRow(config, stats, machine.Stopped, last?.End ?? last?.Commit, lockstep.Divergence);
+        return ran;
     }
+
+    /// <summary>How the run stands: its counters so far, and whether it has gone wrong.</summary>
+    public ComparisonRow Row =>
+        new(Config, _stats, _lockstep.Pipeline.Stopped, _last?.End ?? _last?.Commit, _lockstep.Divergence);
 }

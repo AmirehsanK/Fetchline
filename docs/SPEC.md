@@ -289,6 +289,11 @@ running again from reset, which gives the same run because the machine has no ot
   first sentence of the comment it opens with, in the order a reader might take them: the four
   that each show one thing a pipeline does, then whole programs from the shortest to the longest.
 - **Compare:** the current program under every configuration, as a table of cycles and CPI.
+  `F7` puts it where the diagram is, and again brings the diagram back. It is the table
+  `fetchline compare` prints, made by the same code a stretch at a time, so it fills in row by
+  row and can be left half made; a configuration still running after 250,000 cycles is cut off
+  and says so. The row of the configuration in use is lit, and choosing a row builds the
+  pipeline that way.
 - **Share and export:** a link holds the source, configuration and cycle (deflate, base64url, size
   capped and validated before use). The staircase exports as SVG or PNG, the trace as JSON or
   Kanata.
@@ -457,7 +462,7 @@ link opened in a fresh profile shows the same cycle and the same numbers.
 - [x] 8.1 The configuration panel: the what-if switches
 - [ ] 8.2 The datapath as data, and the paths that are active in a cycle
 - [ ] 8.3 The datapath drawn, with values on hover
-- [ ] 8.4 The compare table
+- [x] 8.4 The compare table
 - [x] 8.5 The examples menu
 - [ ] 8.6 The share codec, held to malformed and oversized input, and links that use it
 - [ ] 8.7 The timeline, and long runs in slices

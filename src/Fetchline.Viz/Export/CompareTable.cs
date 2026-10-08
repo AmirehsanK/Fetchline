@@ -19,12 +19,21 @@ public static class CompareTable
     // The first three columns are names and read from the left; the rest are numbers.
     private const int Names = 3;
 
-    public static string Write(Program program, IReadOnlyList<ComparisonRow> rows, IMessages messages)
+    /// <summary>The table as text, a line for each of <see cref="Lines"/>.</summary>
+    public static string Write(Program program, IReadOnlyList<ComparisonRow> rows, IMessages messages) =>
+        string.Concat(Lines(program, rows, messages).Select(line => line.Text + "\n"));
+
+    /// <summary>
+    /// The table a line at a time, each line of a configuration with the row it is about, so
+    /// that a page can make those lines something to choose. The headings, the gaps and the
+    /// lines under the table belong to no row.
+    /// </summary>
+    public static IReadOnlyList<CompareLine> Lines(Program program, IReadOnlyList<ComparisonRow> rows, IMessages messages)
     {
-        var text = new StringBuilder();
+        var lines = new List<CompareLine>();
         if (rows.Count == 0)
         {
-            return string.Empty;
+            return lines;
         }
 
         string[] headings =
@@ -40,15 +49,15 @@ public static class CompareTable
         // A gap between one way of handling hazards and the next, when each has several rows.
         var grouped = rows.Select(row => row.Config.Hazards).Distinct().Count() < rows.Count;
 
-        WriteLine(text, headings, widths, note: string.Empty);
+        lines.Add(new CompareLine(Line(headings, widths, note: string.Empty)));
         for (var i = 0; i < rows.Count; i++)
         {
             if (grouped && i > 0 && rows[i].Config.Hazards != rows[i - 1].Config.Hazards)
             {
-                text.Append('\n');
+                lines.Add(new CompareLine(string.Empty));
             }
 
-            WriteLine(text, cells[i], widths, Note(rows[i], messages));
+            lines.Add(new CompareLine(Line(cells[i], widths, Note(rows[i], messages)), rows[i]));
         }
 
         // What "the right answer" means needs a run that got to an end of its own.
@@ -58,25 +67,23 @@ public static class CompareTable
         var wrong = rows.FirstOrDefault(row => !row.IsRight);
         if ((right is not null && rows.Count > 1) || wrong is not null)
         {
-            text.Append('\n');
+            lines.Add(new CompareLine(string.Empty));
         }
 
         if (right is not null && rows.Count > 1)
         {
-            text.Append(' ')
-                .Append(messages.FewestCycles(right.Stats.Instructions, SwitchNames.Of(right.Config), right.Stats.Cycles))
-                .Append('\n');
+            lines.Add(new CompareLine(
+                " " + messages.FewestCycles(right.Stats.Instructions, SwitchNames.Of(right.Config), right.Stats.Cycles)));
         }
 
         if (wrong is not null)
         {
             var explainer = new Explainer(StaircaseLayout.Build([]), new InstructionLabels(program), messages);
-            text.Append(' ')
-                .Append(messages.WrongWith(SwitchNames.Of(wrong.Config), explainer.Describe(wrong.Divergence!)))
-                .Append('\n');
+            lines.Add(new CompareLine(
+                " " + messages.WrongWith(SwitchNames.Of(wrong.Config), explainer.Describe(wrong.Divergence!))));
         }
 
-        return text.ToString();
+        return lines;
     }
 
     private static string[] Cells(ComparisonRow row, IMessages messages)
@@ -112,7 +119,7 @@ public static class CompareTable
         return string.Join(", ", notes);
     }
 
-    private static void WriteLine(StringBuilder text, string[] cells, int[] widths, string note)
+    private static string Line(string[] cells, int[] widths, string note)
     {
         var line = new StringBuilder();
         for (var column = 0; column < cells.Length; column++)
@@ -126,6 +133,10 @@ public static class CompareTable
             line.Append("  ").Append(note);
         }
 
-        text.Append(line.ToString().TrimEnd()).Append('\n');
+        return line.ToString().TrimEnd();
     }
 }
+
+/// <summary>One line of the comparison table.</summary>
+/// <param name="Row">The configuration the line is about, or null for a heading, a gap or a line under the table.</param>
+public sealed record CompareLine(string Text, ComparisonRow? Row = null);

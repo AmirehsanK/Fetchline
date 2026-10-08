@@ -18,7 +18,14 @@
 
     <SourcePane View="_source" Record="_session.Record" Messages="Messages" OnEdit="Edit" />
 
-    <PipelinePane Session="_session" Labels="_labels" Messages="Messages" />
+    @if (_compare is not null && _session.Program is { } compared)
+    {
+        <ComparePane Job="_compare" Program="compared" Current="_session.Config" Messages="Messages" OnChoose="Rebuild" />
+    }
+    else
+    {
+        <PipelinePane Session="_session" Labels="_labels" Messages="Messages" />
+    }
 
     <LogPane Session="_session" Labels="_labels" Messages="Messages" OnSeek="Seek" />
 
@@ -43,6 +50,9 @@
         <button type="button" class="softkey" aria-keyshortcuts="F6" @onclick="Faster">
             <span class="softkey-fn">F6</span><span class="softkey-name inverse">@Messages.SpeedKey(_pace.Name)</span>
         </button>
+        <button type="button" class="softkey" aria-keyshortcuts="F7" disabled="@(_session.Program is null)" @onclick="CompareOrDiagram">
+            <span class="softkey-fn">F7</span><span class="softkey-name inverse">@(_compare is null ? Messages.CompareKey : Messages.DiagramKey)</span>
+        </button>
     </footer>
 </div>
 
@@ -54,6 +64,18 @@
     private InstructionLabels? _labels;
 
     private RunPace _pace = RunPace.Default;
+
+    // A configuration is compared for this long before it is cut off as still running. The
+    // comparison is made in stretches of this many cycles, one after another until the page is
+    // due to be drawn again.
+    private const ulong MostCyclesCompared = 250_000;
+    private const ulong CyclesComparedAtOnce = 1_000;
+
+    // The comparison on screen in place of the diagram, finished or still being made.
+    private CompareJob? _compare;
+
+    // How long a flat-out run goes on between one drawing of the page and the next.
+    private const int FlatOutMilliseconds = 60;
 
     // Set while the run is going on its own; cancelling it is how the run is paused.
     private CancellationTokenSource? _going;
@@ -84,6 +106,9 @@
             case "F6":
                 Faster();
                 break;
+            case "F7":
+                CompareOrDiagram();
+                break;
             case "F8":
                 Reset();
                 break;
@@ -104,12 +129,48 @@
     // A switch moved is the same program on a pipeline built another way: a new run again.
     private void Rebuild(PipelineConfig config) => Load(_session.Source, config);
 
+    // A new program or a new way of building the pipeline also brings the diagram back: a
+    // comparison is of one program, and choosing one of its rows is how it is left.
     private void Load(string text, PipelineConfig? config)
     {
         Halt();
+        _compare = null;
         _session = new Session(text, config);
         _source = SourceView.Of(_session.Assembly);
         _labels = _session.Program is { } program ? new InstructionLabels(program) : null;
+    }
+
+    private void CompareOrDiagram()
+    {
+        if (_compare is not null)
+        {
+            _compare = null;
+        }
+        else if (_session.Program is { } program)
+        {
+            _compare = new CompareJob(program, Comparison.Configurations(_session.Config), MostCyclesCompared);
+            _ = Compare(_compare);
+        }
+    }
+
+    /// <summary>
+    /// Makes a comparison a stretch at a time, drawing the rows it has between stretches, for
+    /// as long as it is still the comparison on screen.
+    /// </summary>
+    private async Task Compare(CompareJob job)
+    {
+        while (ReferenceEquals(_compare, job) && !job.IsDone)
+        {
+            var spent = System.Diagnostics.Stopwatch.StartNew();
+            while (job.Advance(CyclesComparedAtOnce) && spent.ElapsedMilliseconds < FlatOutMilliseconds)
+            {
+            }
+
+            StateHasChanged();
+            await Task.Delay(1);
+        }
+
+        StateHasChanged();
     }
 
     private void RunOrPause()
@@ -135,8 +196,18 @@
         {
             while (!going.IsCancellationRequested && _session.CanStep)
             {
+                // Flat out, drawing the page costs far more than running the cycles drawn, so
+                // bursts follow one another until a fair share of a frame has been spent on them.
                 var pace = _pace;
-                var ran = _session.Run(pace.Cycles);
+                var spent = System.Diagnostics.Stopwatch.StartNew();
+                int ran;
+                do
+                {
+                    ran = _session.Run(pace.Cycles);
+                }
+                while (pace.IsFlatOut && ran == pace.Cycles && _session.CanStep && _session.Stopped != StopReason.Breakpoint
+                    && spent.ElapsedMilliseconds < FlatOutMilliseconds);
+
                 if (ran == 0 || _session.Stopped == StopReason.Breakpoint)
                 {
                     break;
