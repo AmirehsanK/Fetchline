@@ -346,7 +346,7 @@ official tests.
 - [x] 5.1 Latches and the two-phase kernel, on hazard-free code
 - [x] 5.2 Forwarding
 - [x] 5.3 The load-use stall
-- [ ] 5.4 Branches and jumps decided in EX
+- [x] 5.4 Branches and jumps decided in EX
 - [ ] 5.5 System instructions and traps at the commit point
 - [ ] 5.6 Cycle records and events
 - [ ] 5.7 The lockstep checker

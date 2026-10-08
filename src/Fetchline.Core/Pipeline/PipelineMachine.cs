@@ -90,6 +90,8 @@ public sealed class PipelineMachine
         // ---- EX: the ALU, and the branch decision --------------------------------------------
         var nextExMem = default(ExMem);
         var executeView = default(StageView);
+        var redirect = false;
+        uint redirectTo = 0;
         if (_idEx.Valid)
         {
             var instruction = _idEx.Instruction;
@@ -106,6 +108,14 @@ public sealed class PipelineMachine
                 Exec.OperandB(control.SrcB, rs2, instruction.Imm));
             var taken = Exec.Taken(control.Branch, rs1, rs2);
             var target = Exec.Target(control.Branch, _idEx.Pc, instruction.Imm, alu);
+
+            // Fetch has carried on in a straight line behind this instruction. If it goes
+            // somewhere else, the two instructions fetched since are from the wrong path.
+            if (taken)
+            {
+                redirect = true;
+                redirectTo = target;
+            }
 
             nextExMem = new ExMem(true, _idEx.Seq, _idEx.Pc, instruction, rs1, rs2, alu, taken, target);
             executeView = new StageView(Occupancy.Normal, _idEx.Seq, _idEx.Pc, instruction.Raw);
@@ -151,16 +161,41 @@ public sealed class PipelineMachine
             }
         }
 
-        // A stall in ID holds everything behind it: IF/ID keeps its instruction, and so does IF.
-        var nextIfId = stall ? _ifId : fetching;
-        _heldFetch = stall ? fetching : default;
+        IfId nextIfId;
         var fetchView = default(StageView);
-        if (fetching.Valid)
+        if (redirect)
         {
-            fetchView = new StageView(stall ? Occupancy.Held : Occupancy.Normal, fetching.Seq, fetching.Pc, fetching.Raw);
-            if (!stall)
+            // A redirect outranks a stall: the instructions in ID and IF are from the wrong path,
+            // so whether one of them was waiting no longer matters. Both are thrown away, and so
+            // is an end of the code that fetch may have run into on that path.
+            nextIdEx = default;
+            nextIfId = default;
+            _heldFetch = default;
+            _pendingEnd = null;
+            _pc = redirectTo;
+
+            if (decodeView.HasInstruction)
             {
-                _pc = fetching.Pc + 4;
+                decodeView = decodeView with { State = Occupancy.Squashed };
+            }
+
+            if (fetching.Valid)
+            {
+                fetchView = new StageView(Occupancy.Squashed, fetching.Seq, fetching.Pc, fetching.Raw);
+            }
+        }
+        else
+        {
+            // A stall in ID holds everything behind it: IF/ID keeps its instruction, and so does IF.
+            nextIfId = stall ? _ifId : fetching;
+            _heldFetch = stall ? fetching : default;
+            if (fetching.Valid)
+            {
+                fetchView = new StageView(stall ? Occupancy.Held : Occupancy.Normal, fetching.Seq, fetching.Pc, fetching.Raw);
+                if (!stall)
+                {
+                    _pc = fetching.Pc + 4;
+                }
             }
         }
 
