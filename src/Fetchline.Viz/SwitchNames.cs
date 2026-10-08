@@ -36,16 +36,25 @@ public static class SwitchNames
 
     /// <summary>The value a name stands for. The name must be one of <see cref="All{T}"/>.</summary>
     public static T Parse<T>(string name, Func<T, string> nameOf)
+        where T : struct, Enum =>
+        TryParse(name, nameOf, out var value)
+            ? value
+            : throw new ArgumentException($"'{name}' is not one of: {string.Join(", ", All(nameOf))}.");
+
+    /// <summary>The value a name stands for, if it stands for one: for names that come from outside.</summary>
+    public static bool TryParse<T>(string name, Func<T, string> nameOf, out T value)
         where T : struct, Enum
     {
-        foreach (var value in Enum.GetValues<T>())
+        foreach (var candidate in Enum.GetValues<T>())
         {
-            if (nameOf(value) == name)
+            if (nameOf(candidate) == name)
             {
-                return value;
+                value = candidate;
+                return true;
             }
         }
 
-        throw new ArgumentException($"'{name}' is not one of: {string.Join(", ", All(nameOf))}.");
+        value = default;
+        return false;
     }
 }

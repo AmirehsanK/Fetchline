@@ -298,8 +298,11 @@ running again from reset, which gives the same run because the machine has no ot
   and says so. The row of the configuration in use is lit, and choosing a row builds the
   pipeline that way.
 - **Share and export:** a link holds the source, configuration and cycle (deflate, base64url, size
-  capped and validated before use). The staircase exports as SVG or PNG, the trace as JSON or
-  Kanata.
+  capped and validated before use). The link is the fragment of the page's address, which follows
+  what is on screen a moment behind it and never adds to the history; `F2` brings it up to date
+  at once and copies it. A link carries a check of its source, so one cut short in transit is
+  refused, with the reason on the status line, instead of running some other program. The
+  staircase exports as SVG or PNG, the trace as JSON or Kanata.
 - Every string comes from a typed catalog, so a message missing from one language does not
   compile. Diagrams stay left to right in Persian.
 
@@ -467,7 +470,7 @@ link opened in a fresh profile shows the same cycle and the same numbers.
 - [ ] 8.3 The datapath drawn, with values on hover
 - [x] 8.4 The compare table
 - [x] 8.5 The examples menu
-- [ ] 8.6 The share codec, held to malformed and oversized input, and links that use it
+- [x] 8.6 The share codec, held to malformed and oversized input, and links that use it
 - [x] 8.7 The timeline, and long runs in slices
 - [ ] 8.8 Checked in a real browser: a link in a fresh profile shows the same cycle and numbers
 

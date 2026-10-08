@@ -1,3 +1,4 @@
+@using System.Diagnostics
 @using Fetchline.Core.Isa
 @using Fetchline.Core.Trace
 @using Fetchline.Viz.Editor
@@ -5,12 +6,15 @@
 @inject IJSRuntime Js
 
 @*
-    What the tube shows: a status line, the panes, and a row of soft keys. All of it is drawn
-    from one Session, which is replaced by a new one whenever the source changes.
+    What the tube shows: a status line, the switches, the timeline, the panes, and a row of soft
+    keys. All of it is drawn from one Session, which is replaced by a new one whenever the source
+    or a switch changes. What is on screen is also kept, a moment behind, in the fragment of the
+    page's address, so that the address is always a link to it.
 *@
 <div class="desk">
     <header class="status">
         <span class="inverse">&nbsp;FETCHLINE&nbsp;</span>
+        <span class="notice" role="status">@_notice</span>
         <span class="status-end" role="status">@Standing.Of(_session, Going, Messages)</span>
     </header>
 
@@ -61,10 +65,27 @@
         <button type="button" class="softkey" aria-keyshortcuts="F7" disabled="@(_session.Program is null)" @onclick="CompareOrDiagram">
             <span class="softkey-fn">F7</span><span class="softkey-name inverse">@(_compare is null ? Messages.CompareKey : Messages.DiagramKey)</span>
         </button>
+        <button type="button" class="softkey" aria-keyshortcuts="F2" @onclick="Share">
+            <span class="softkey-fn">F2</span><span class="softkey-name inverse">@Messages.ShareKey</span>
+        </button>
     </footer>
 </div>
 
 @code {
+    // A configuration is compared for this long before it is cut off as still running. The
+    // comparison is made in stretches of this many cycles, one after another until the page is
+    // due to be drawn again.
+    private const ulong MostCyclesCompared = 250_000;
+    private const ulong CyclesComparedAtOnce = 1_000;
+
+    // How long a flat-out run goes on between one drawing of the page and the next.
+    private const int FlatOutMilliseconds = 60;
+
+    // How long what is on screen has to stay as it is before the address is brought up to date
+    // with it, and how long something said on the status line stays there.
+    private const int SettleMilliseconds = 400;
+    private const int NoticeMilliseconds = 6000;
+
     private static readonly IMessages Messages = EnglishMessages.Instance;
 
     private Session _session = default!;
@@ -73,32 +94,64 @@
 
     private RunPace _pace = RunPace.Default;
 
-    // A configuration is compared for this long before it is cut off as still running. The
-    // comparison is made in stretches of this many cycles, one after another until the page is
-    // due to be drawn again.
-    private const ulong MostCyclesCompared = 250_000;
-    private const ulong CyclesComparedAtOnce = 1_000;
-
     // The comparison on screen in place of the diagram, finished or still being made.
     private CompareJob? _compare;
-
-    // How long a flat-out run goes on between one drawing of the page and the next.
-    private const int FlatOutMilliseconds = 60;
 
     // Set while the run is going on its own; cancelling it is how the run is paused.
     private CancellationTokenSource? _going;
     private DotNetObjectReference<App>? _self;
 
+    // The cycle a link the page was opened with points at; the run goes there once it is on screen.
+    private ulong _openAt;
+
+    // What the status line is saying for the moment, and counters that tell a newer notice or
+    // a newer state of the screen from the one a timer was started for.
+    private string _notice = string.Empty;
+    private int _noticed;
+    private int _touched;
+
     private bool Going => _going is not null;
 
-    protected override void OnInitialized() => Edit(ExampleCatalog.First.Source);
+    // In the browser the page can be asked things without waiting, which is how the address is
+    // read before anything is drawn.
+    private IJSInProcessRuntime Page => (IJSInProcessRuntime)Js;
+
+    /// <summary>
+    /// The page starts with what its address says, when it says something: a link is a source,
+    /// the switches and a cycle. A link that cannot be read is said to be so, and the first
+    /// example is shown, as it is when there is no link at all.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        var fragment = Page.Invoke<string>("fetchlineLink.read");
+        if (fragment.Length <= 1)
+        {
+            Load(ExampleCatalog.First.Source, null);
+        }
+        else if (ShareLink.TryDecode(fragment, out var shared, out var problem))
+        {
+            Load(shared.Source, shared.Config);
+            _openAt = shared.Cycle;
+        }
+        else
+        {
+            Load(ExampleCatalog.First.Source, null);
+            Say(Messages.LinkNotRead(problem));
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender)
         {
-            _self = DotNetObjectReference.Create(this);
-            await Js.InvokeVoidAsync("fetchlineKeys.listen", _self);
+            return;
+        }
+
+        _self = DotNetObjectReference.Create(this);
+        await Js.InvokeVoidAsync("fetchlineKeys.listen", _self);
+        if (_openAt > 0)
+        {
+            _ = Go(until: _openAt);
         }
     }
 
@@ -108,6 +161,9 @@
     {
         switch (key)
         {
+            case "F2":
+                _ = Share();
+                break;
             case "F5":
                 RunOrPause();
                 break;
@@ -146,6 +202,7 @@
         _session = new Session(text, config);
         _source = SourceView.Of(_session.Assembly);
         _labels = _session.Program is { } program ? new InstructionLabels(program) : null;
+        Touch();
     }
 
     private void CompareOrDiagram()
@@ -169,7 +226,7 @@
     {
         while (ReferenceEquals(_compare, job) && !job.IsDone)
         {
-            var spent = System.Diagnostics.Stopwatch.StartNew();
+            var spent = Stopwatch.StartNew();
             while (job.Advance(CyclesComparedAtOnce) && spent.ElapsedMilliseconds < FlatOutMilliseconds)
             {
             }
@@ -186,6 +243,7 @@
         if (Going)
         {
             Halt();
+            Touch();
         }
         else if (_session.CanStep)
         {
@@ -197,24 +255,28 @@
     /// Lets the run go on its own: some cycles, a pause in which the page is drawn and the keys
     /// are heard, and again, until it ends, pauses at an ebreak, or is told to stop.
     /// </summary>
-    private async Task Go()
+    /// <param name="until">
+    /// A cycle to go to and stop at, flat out whatever the pace is set to: how the page gets to
+    /// the cycle a link points at.
+    /// </param>
+    private async Task Go(ulong until = ulong.MaxValue)
     {
         var going = _going = new CancellationTokenSource();
         try
         {
-            while (!going.IsCancellationRequested && _session.CanStep)
+            while (!going.IsCancellationRequested && _session.CanStep && _session.Cycle < until)
             {
                 // Flat out, drawing the page costs far more than running the cycles drawn, so
                 // bursts follow one another until a fair share of a frame has been spent on them.
-                var pace = _pace;
-                var spent = System.Diagnostics.Stopwatch.StartNew();
+                var pace = until == ulong.MaxValue ? _pace : RunPace.All[^1];
+                var spent = Stopwatch.StartNew();
                 int ran;
                 do
                 {
-                    ran = _session.Run(pace.Cycles);
+                    ran = _session.Run((int)Math.Min((ulong)pace.Cycles, until - _session.Cycle));
                 }
-                while (pace.IsFlatOut && ran == pace.Cycles && _session.CanStep && _session.Stopped != StopReason.Breakpoint
-                    && spent.ElapsedMilliseconds < FlatOutMilliseconds);
+                while (pace.IsFlatOut && ran == pace.Cycles && _session.CanStep && _session.Cycle < until
+                    && _session.Stopped != StopReason.Breakpoint && spent.ElapsedMilliseconds < FlatOutMilliseconds);
 
                 if (ran == 0 || _session.Stopped == StopReason.Breakpoint)
                 {
@@ -234,6 +296,7 @@
             if (ReferenceEquals(_going, going))
             {
                 _going = null;
+                Touch();
             }
 
             going.Dispose();
@@ -252,24 +315,28 @@
     {
         Halt();
         _session.Step();
+        Touch();
     }
 
     private void Back()
     {
         Halt();
         _session.StepBack();
+        Touch();
     }
 
     private void Reset()
     {
         Halt();
         _session.Reset();
+        Touch();
     }
 
     private void Seek(ulong cycle)
     {
         Halt();
         _session.Seek(cycle);
+        Touch();
     }
 
     private void Faster() => _pace = _pace.Next();
@@ -287,4 +354,78 @@
     private string Fraction() => _session.Frontier == 0
         ? "0"
         : (100.0 * _session.Cycle / _session.Frontier).ToString("0.##", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Notes that what is on screen has changed. Once it has stayed as it is for a moment, and
+    /// is not running, the address is brought up to date with it: not at every keystroke or
+    /// every cycle of a run, which would be a great deal of work for an address nobody reads.
+    /// </summary>
+    private void Touch()
+    {
+        var mine = ++_touched;
+        _ = Settle();
+
+        async Task Settle()
+        {
+            await Task.Delay(SettleMilliseconds);
+            if (mine == _touched && !Going)
+            {
+                Link();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Puts a link to what is on screen in the page's address. False when it cannot be put in a
+    /// link: a source too long, or a cycle too far on; the address then holds no link at all,
+    /// which is better than one to something else.
+    /// </summary>
+    private bool Link()
+    {
+        try
+        {
+            Page.InvokeVoid("fetchlineLink.write", ShareLink.Encode(new Shared(_session.Source, _session.Config, _session.Cycle)));
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            Page.InvokeVoid("fetchlineLink.write", string.Empty);
+            return false;
+        }
+    }
+
+    /// <summary>Makes the address a link to what is on screen now, and copies it if the browser allows.</summary>
+    private async Task Share()
+    {
+        Halt();
+        _touched++;
+        if (!Link())
+        {
+            Say(Messages.LinkNotMade);
+        }
+        else
+        {
+            Say(await Js.InvokeAsync<bool>("fetchlineLink.copy") ? Messages.LinkCopied : Messages.LinkInAddress);
+        }
+
+        StateHasChanged();
+    }
+
+    /// <summary>Says something on the status line for a few seconds.</summary>
+    private void Say(string notice)
+    {
+        _notice = notice;
+        var mine = ++_noticed;
+        _ = Clear();
+
+        async Task Clear()
+        {
+            await Task.Delay(NoticeMilliseconds);
+            if (mine == _noticed)
+            {
+                _notice = string.Empty;
+                StateHasChanged();
+            }
+        }
+    }
 }

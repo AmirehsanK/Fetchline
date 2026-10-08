@@ -235,6 +235,11 @@ body {
     margin-left: auto;
 }
 
+/* Something said for the moment: that a link was copied, or could not be read. */
+.notice {
+    color: var(--ink);
+}
+
 /* The what-if switches: a name, dim, and its positions, the one chosen lit. */
 .switches-bar {
     grid-area: switches;

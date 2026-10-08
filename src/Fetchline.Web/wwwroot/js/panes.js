@@ -8,12 +8,35 @@ window.fetchlineEditor = {
     },
 };
 
+window.fetchlineLink = {
+    // The fragment of the page's address: a link to what was on screen, if it holds one.
+    read: function () {
+        return location.hash;
+    },
+
+    // Puts a link in the address without adding to the history: Back should leave the page,
+    // not walk through every cycle that was ever on screen.
+    write: function (link) {
+        history.replaceState(null, '', link ? '#' + link : location.pathname + location.search);
+    },
+
+    // Copies the page's address. A browser may refuse, and then the caller is told so.
+    copy: async function () {
+        try {
+            await navigator.clipboard.writeText(location.href);
+            return true;
+        } catch (refused) {
+            return false;
+        }
+    },
+};
+
 window.fetchlineKeys = {
     // The function keys named on the soft keys are real keys. They are taken only when pressed
     // alone, so Ctrl+F5 still reloads the page; and only stepping repeats when a key is held.
     listen: function (listener) {
         var repeats = { F9: true, F10: true };
-        var keys = { F5: true, F6: true, F7: true, F8: true, F9: true, F10: true };
+        var keys = { F2: true, F5: true, F6: true, F7: true, F8: true, F9: true, F10: true };
 
         window.addEventListener('keydown', function (event) {
             if (!keys[event.key] || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {

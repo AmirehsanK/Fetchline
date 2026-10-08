@@ -131,6 +131,21 @@ public interface IMessages
     /// <summary>Under a finished comparison: what its rows are for.</summary>
     string CompareHint { get; }
 
+    /// <summary>The key that makes a link to what is on screen.</summary>
+    string ShareKey { get; }
+
+    /// <summary>Said when a link has been made and copied.</summary>
+    string LinkCopied { get; }
+
+    /// <summary>Said when a link has been made but the browser would not let it be copied.</summary>
+    string LinkInAddress { get; }
+
+    /// <summary>Said when what is on screen cannot be put into a link.</summary>
+    string LinkNotMade { get; }
+
+    /// <summary>Said when the page was opened with a link it could not read, and why not.</summary>
+    string LinkNotRead(LinkProblem problem);
+
     /// <summary>What the timeline is, for a reader who cannot see it: the control that goes to any cycle run so far.</summary>
     string Timeline { get; }
 
@@ -381,6 +396,25 @@ public sealed class EnglishMessages : IMessages
         string.Create(CultureInfo.InvariantCulture, $"Running it every way: {done} of {total} done.");
 
     public string CompareHint => "Choose a row to build the pipeline that way.";
+
+    public string ShareKey => "SHARE";
+
+    public string LinkCopied => "LINK COPIED: THE SOURCE, THE SWITCHES AND THIS CYCLE";
+
+    public string LinkInAddress => "THE LINK IS IN THE ADDRESS BAR";
+
+    public string LinkNotMade => "TOO MUCH TO PUT IN A LINK";
+
+    public string LinkNotRead(LinkProblem problem) => "THE LINK COULD NOT BE READ: " + problem switch
+    {
+        LinkProblem.Empty => "THERE IS NOTHING IN IT",
+        LinkProblem.TooLong => "IT IS TOO LONG",
+        LinkProblem.UnknownKind => "IT IS A KIND THIS PAGE DOES NOT READ",
+        LinkProblem.NotText => "WHAT IS IN IT IS NOT TEXT",
+        LinkProblem.UnknownSettings => "IT HAS SETTINGS THERE ARE NOT",
+        LinkProblem.CutShort => "IT WAS CUT SHORT OR CHANGED ON THE WAY",
+        _ => "IT IS DAMAGED",
+    };
 
     public string Timeline => "Cycle on screen";
 
