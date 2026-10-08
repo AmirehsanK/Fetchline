@@ -343,7 +343,7 @@ pass, with the `rv32mi` tests that fit a machine-mode core, and CI runs them.
 match the closed form on random straight-line code, and lockstep is clean on the examples and the
 official tests.
 
-- [ ] 5.1 Latches and the two-phase kernel, on hazard-free code
+- [x] 5.1 Latches and the two-phase kernel, on hazard-free code
 - [ ] 5.2 Forwarding
 - [ ] 5.3 The load-use stall
 - [ ] 5.4 Branches and jumps decided in EX
