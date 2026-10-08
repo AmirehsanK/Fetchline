@@ -287,6 +287,17 @@ computer, not as a modern web app.
 files and exits non-zero on any failure, which is what CI calls. Every command writes to the
 invocation's output, so the tests run commands in-process and compare what they print.
 
+`trace` and `compare` take the what-if switches of section 7 as `--hazards forwarding|stall|off`,
+`--branch ex|id`, `--predictor not-taken|backward-taken|1-bit|2-bit`, `--btb N` and `--muldiv N`.
+`trace` draws the one configuration they describe. `compare` runs the program on every
+combination of hazard handling, branch decision and predictor, except that a switch which is
+given is kept fixed, and prints a row for each: its cycles, its CPI, the cycles lost to stalls,
+the instructions squashed, and how many of its branches were guessed wrong. Every run has the
+reference machine beside it, so a row that computed something else is marked wrong and the first
+wrong value is named under the table. The names in a row are the names the switches take, so a
+row can be typed back to `trace`. The table is made by `Comparison` in the engine and
+`CompareTable` in `Fetchline.Viz`, which the playground's compare view will use as well.
+
 ## 10. Milestones
 
 Each milestone is split into sections; a section is one commit, pushed when it is green. A box is
@@ -368,7 +379,7 @@ every correct configuration, and "off" reports its first wrong value.
 - [x] 6.3 Branches decided in ID
 - [x] 6.4 Static and dynamic predictors with a BTB
 - [x] 6.5 Multi-cycle multiply and divide
-- [ ] 6.6 `fetchline compare`
+- [x] 6.6 `fetchline compare`
 - [ ] 6.7 Lockstep across every configuration on random programs with branches
 
 **M7. Web playground: editor, controls, staircase with arrows, hazard log, state panes.** Done

@@ -44,6 +44,37 @@ that runs one instruction at a time and passes the official RISC-V tests (64 of 
 two need features a machine-mode core does not have). The pipeline is checked against it
 instruction by instruction.
 
+The pipeline can be built other ways, and each way is a switch: `--hazards forwarding|stall|off`,
+`--branch ex|id`, `--predictor not-taken|backward-taken|1-bit|2-bit` with `--btb` entries, and
+`--muldiv` cycles for a multiply or a divide. `trace` draws a run with the switches it is given.
+`compare` runs the program on every combination of the ones it is not given:
+
+```bash
+dotnet run --project src/Fetchline.Cli -- compare examples/sum.s --hazards forwarding
+```
+
+```
+ hazards     branch  predictor       cycles   CPI  stalls  squashed  wrong guesses
+ forwarding  ex      not-taken           68  1.70       0        23        9 of 10
+ forwarding  ex      backward-taken      52  1.30       0         7        1 of 10
+ forwarding  ex      1-bit               54  1.35       0         9        2 of 10
+ forwarding  ex      2-bit               54  1.35       0         9        2 of 10
+ forwarding  id      not-taken           69  1.73      10        14        9 of 10
+ forwarding  id      backward-taken      61  1.53      10         6        1 of 10
+ forwarding  id      1-bit               62  1.55      10         7        2 of 10
+ forwarding  id      2-bit               62  1.55      10         7        2 of 10
+
+ 40 instructions; fewest cycles with the right answer: forwarding, ex, backward-taken (52)
+```
+
+Deciding branches a stage earlier is the slower choice for this loop: a wrong guess costs one
+cycle instead of two, but every branch waits a cycle for the `addi` just ahead of it. And with
+`--hazards off` the pipeline computes the wrong answer on purpose, and says where it first did:
+
+```
+ off, ex, not-taken: first wrong value: instruction 4, 'add a0, a0, t0', in cycle 8: the pipeline wrote a0 = 0x00000000, the reference machine wrote a0 = 0x00000001
+```
+
 ```bash
 dotnet run --project src/Fetchline.Cli -- run examples/fib.s
 ```

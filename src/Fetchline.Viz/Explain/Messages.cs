@@ -83,6 +83,43 @@ public interface IMessages
 
     /// <summary>The two machines ran different instructions.</summary>
     string WrongInstruction(string pipeline, string reference);
+
+    /// <summary>The heading of the comparison table's column for how data hazards are handled.</summary>
+    string HazardsHeading { get; }
+
+    /// <summary>The heading of the column for the stage that decides branches.</summary>
+    string BranchHeading { get; }
+
+    /// <summary>The heading of the column for the predictor.</summary>
+    string PredictorHeading { get; }
+
+    string CyclesHeading { get; }
+
+    string CpiHeading { get; }
+
+    /// <summary>The heading of the column for cycles in which an instruction was made to wait.</summary>
+    string StallsHeading { get; }
+
+    /// <summary>The heading of the column for instructions fetched and then thrown away.</summary>
+    string SquashedHeading { get; }
+
+    /// <summary>The heading of the column for branches and jumps that fetch had not followed.</summary>
+    string WrongGuessesHeading { get; }
+
+    /// <summary>How many of the branches and jumps decided were guessed wrong: <c>9 of 10</c>.</summary>
+    string Guesses(int wrong, int decided);
+
+    /// <summary>What marks a row whose run differed from the reference machine.</summary>
+    string WrongAnswer { get; }
+
+    /// <summary>What marks a row whose run was cut off before it ended.</summary>
+    string CutOff(ulong cycles);
+
+    /// <summary>How long the program is, and the configuration that ran it right in the fewest cycles.</summary>
+    string FewestCycles(ulong instructions, string configuration, ulong cycles);
+
+    /// <summary>Where a configuration that computes the wrong answer first went wrong.</summary>
+    string WrongWith(string configuration, string firstWrongValue);
 }
 
 public sealed class EnglishMessages : IMessages
@@ -162,6 +199,34 @@ public sealed class EnglishMessages : IMessages
 
     public string WrongInstruction(string pipeline, string reference) =>
         $"the pipeline ran {pipeline} where the reference machine ran {reference}";
+
+    public string HazardsHeading => "hazards";
+
+    public string BranchHeading => "branch";
+
+    public string PredictorHeading => "predictor";
+
+    public string CyclesHeading => "cycles";
+
+    public string CpiHeading => "CPI";
+
+    public string StallsHeading => "stalls";
+
+    public string SquashedHeading => "squashed";
+
+    public string WrongGuessesHeading => "wrong guesses";
+
+    public string Guesses(int wrong, int decided) =>
+        string.Create(CultureInfo.InvariantCulture, $"{wrong} of {decided}");
+
+    public string WrongAnswer => "wrong";
+
+    public string CutOff(ulong cycles) => $"still running after {Count(cycles, "cycle")}";
+
+    public string FewestCycles(ulong instructions, string configuration, ulong cycles) =>
+        $"{Count(instructions, "instruction")}; fewest cycles with the right answer: {configuration} ({cycles.ToString(CultureInfo.InvariantCulture)})";
+
+    public string WrongWith(string configuration, string firstWrongValue) => $"{configuration}: {firstWrongValue}";
 
     private static string Count(long number, string one, string? many = null) => string.Create(
         CultureInfo.InvariantCulture, $"{number} {(number == 1 ? one : many ?? one + "s")}");

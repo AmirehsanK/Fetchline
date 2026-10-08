@@ -27,5 +27,6 @@ internal static class FetchlineCommand
             RunCommand.Build(),
             TestCommand.Build(),
             TraceCommand.Build(),
+            CompareCommand.Build(),
         };
 }

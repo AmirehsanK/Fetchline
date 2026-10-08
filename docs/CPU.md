@@ -292,6 +292,18 @@ the instructions they came from have left the pipeline. An instruction in MEM th
 is behind it can only catch a multiply in its first cycle, since after that there are bubbles
 ahead of it, and then the multiply starts again from the beginning when it is fetched again.
 
+**Comparing them.** `fetchline compare` runs one program on every combination of hazard
+handling, branch decision and predictor, each with the reference machine beside it, and prints a
+row for each: cycles, CPI, cycles lost to stalls, instructions squashed, and branches guessed
+wrong. For `examples/sum.s`, forty instructions with a loop that goes round ten times, the table
+can be worked out by hand, and a test holds it to that. Decided in EX with forwarding the run
+takes 68 cycles guessing not-taken, 52 with the static rule and 54 with either dynamic
+predictor; decided in ID it takes 69, 61 and 62, because each of the ten branches waits a cycle
+for the `addi` ahead of it. Stalling only, the waits come to 21 cycles whichever stage decides
+the branch, so there the earlier decision is the faster one: 80 cycles against 89 guessing
+not-taken. A configuration that computed something else is marked wrong, and "off" is marked
+only when it is: a program with no close dependencies is right however it is run.
+
 How they were checked:
 
 - **Lockstep in each configuration.** Every example runs in lockstep stalling only, with
