@@ -1,5 +1,6 @@
 using System.Globalization;
 using Fetchline.Core.Pipeline;
+using Fetchline.Viz.Datapath;
 
 namespace Fetchline.Viz.Explain;
 
@@ -130,6 +131,29 @@ public interface IMessages
 
     /// <summary>Under a finished comparison: what its rows are for.</summary>
     string CompareHint { get; }
+
+    /// <summary>The key that shows the datapath in place of the diagram, and the one that brings the diagram back.</summary>
+    string DatapathKey { get; }
+
+    string StaircaseKey { get; }
+
+    /// <summary>The title of the pane the datapath is drawn in.</summary>
+    string DatapathTitle { get; }
+
+    /// <summary>What a wire of the datapath carries, as a datapath is labelled.</summary>
+    string NameOf(Signal signal);
+
+    /// <summary>On a wire that is in use this cycle: what it carries and the value on it.</summary>
+    string WireCarries(string signal, string value);
+
+    /// <summary>On a wire that is in use this cycle and carries a decision, not a value.</summary>
+    string WireAsserted(string signal);
+
+    /// <summary>On a wire that nothing is using this cycle.</summary>
+    string WireIdle(string signal);
+
+    /// <summary>Under the datapath: how to read it.</summary>
+    string DatapathHint { get; }
 
     /// <summary>The key that makes a link to what is on screen.</summary>
     string ShareKey { get; }
@@ -396,6 +420,46 @@ public sealed class EnglishMessages : IMessages
         string.Create(CultureInfo.InvariantCulture, $"Running it every way: {done} of {total} done.");
 
     public string CompareHint => "Choose a row to build the pipeline that way.";
+
+    public string DatapathKey => "DATAPATH";
+
+    public string StaircaseKey => "DIAGRAM";
+
+    public string DatapathTitle => "DATAPATH";
+
+    // The words a textbook writes beside the wires.
+    public string NameOf(Signal signal) => signal switch
+    {
+        Signal.Pc => "pc",
+        Signal.PcPlus4 => "pc + 4",
+        Signal.NextPc => "next pc",
+        Signal.Predicted => "predicted next pc",
+        Signal.Target => "redirect to",
+        Signal.Instruction => "instruction",
+        Signal.Rs1 => "rs1",
+        Signal.Rs2 => "rs2",
+        Signal.Rs1Value => "value of rs1",
+        Signal.Rs2Value => "value of rs2",
+        Signal.Imm => "immediate",
+        Signal.AluA => "ALU operand a",
+        Signal.AluB => "ALU operand b",
+        Signal.Result => "result",
+        Signal.Forwarded => "forwarded value",
+        Signal.Address => "address",
+        Signal.WriteData => "data to write",
+        Signal.ReadData => "data read",
+        Signal.RdValue => "value written to rd",
+        Signal.Hold => "hold",
+        _ => "select the forwarded value",
+    };
+
+    public string WireCarries(string signal, string value) => $"{signal} = {value}";
+
+    public string WireAsserted(string signal) => signal;
+
+    public string WireIdle(string signal) => $"{signal}: not used this cycle";
+
+    public string DatapathHint => "Bright wires are the ones in use this cycle. Point at one for its value.";
 
     public string ShareKey => "SHARE";
 

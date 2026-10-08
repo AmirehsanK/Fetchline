@@ -95,6 +95,9 @@ public sealed class PipelineMachine
         (uint Pc, bool Taken, uint Target)? outcome = null;
         Stopped = StopReason.None;      // a pause at an ebreak ends when the machine is stepped again
 
+        // What is on the wires this cycle, noted by each stage as it works.
+        var wires = default(Wires);
+
         // ---- WB: the result is written to its register -------------------------------------
         Commit? committed = null;
         var writeBackView = default(StageView);
@@ -128,6 +131,7 @@ public sealed class PipelineMachine
                 _exMem.Pc, _exMem.Instruction, _exMem.Rs1, _exMem.Rs2, _exMem.Alu, _exMem.Taken, _exMem.Target);
             nextMemWb = new MemWb(true, _exMem.Seq, commit);
             memoryView = new StageView(Occupancy.Normal, _exMem.Seq, _exMem.Pc, _exMem.Instruction.Raw);
+            wires = wires with { MemoryAlu = _exMem.Alu, MemoryRs2 = _exMem.Rs2 };
 
             if (_events is not null)
             {
@@ -193,6 +197,10 @@ public sealed class PipelineMachine
                 rs2 = Forward(Operand.B, instruction.Rs2, control.UsesRs2, rs2);
             }
 
+            var operandA = Exec.OperandA(control.SrcA, rs1, _idEx.Pc);
+            var operandB = Exec.OperandB(control.SrcB, rs2, instruction.Imm);
+            wires = wires with { ExecuteRs1 = rs1, ExecuteRs2 = rs2, AluA = operandA, AluB = operandB };
+
             var remaining = control.IsMulDiv ? Config.MulDivCycles - 1 - _idEx.Spent : 0;
             if (remaining > 0)
             {
@@ -209,10 +217,8 @@ public sealed class PipelineMachine
             }
             else
             {
-                var alu = Exec.Alu(
-                    control.Alu,
-                    Exec.OperandA(control.SrcA, rs1, _idEx.Pc),
-                    Exec.OperandB(control.SrcB, rs2, instruction.Imm));
+                var alu = Exec.Alu(control.Alu, operandA, operandB);
+                wires = wires with { AluOut = alu };
                 var taken = decided ? _idEx.Taken : Exec.Taken(control.Branch, rs1, rs2);
                 var target = decided ? _idEx.Target : Exec.Target(control.Branch, _idEx.Pc, instruction.Imm, alu);
 
@@ -263,6 +269,8 @@ public sealed class PipelineMachine
             if (_ifId.Valid)
             {
                 decodeView = new StageView(Occupancy.Held, _ifId.Seq, _ifId.Pc, _ifId.Raw);
+                var waiting = Decoder.Decode(_ifId.Raw);
+                wires = wires with { DecodeRs1 = x[waiting.Rs1], DecodeRs2 = x[waiting.Rs2] };
             }
         }
         else if (_ifId.Valid)
@@ -322,6 +330,9 @@ public sealed class PipelineMachine
             }
 
             decodeView = new StageView(stall ? Occupancy.Held : Occupancy.Normal, _ifId.Seq, _ifId.Pc, _ifId.Raw);
+            wires = nextIdEx.Valid
+                ? wires with { DecodeRs1 = nextIdEx.Rs1, DecodeRs2 = nextIdEx.Rs2 }
+                : wires with { DecodeRs1 = x[instruction.Rs1], DecodeRs2 = x[instruction.Rs2] };
         }
 
         // ---- IF: read the next instruction ---------------------------------------------------
@@ -341,6 +352,7 @@ public sealed class PipelineMachine
 
         IfId nextIfId;
         var fetchView = default(StageView);
+        var nextPcFrom = NextPcFrom.Held;
         if (redirect)
         {
             // A redirect outranks a stall: the instructions in ID and IF are from the wrong path,
@@ -352,6 +364,7 @@ public sealed class PipelineMachine
             _heldFetch = default;
             _pendingEnd = null;
             _pc = redirectTo;
+            nextPcFrom = flush ? NextPcFrom.Memory : NextPcFrom.Execute;
 
             if (decodeView.HasInstruction)
             {
@@ -373,6 +386,7 @@ public sealed class PipelineMachine
             _heldFetch = default;
             _pendingEnd = null;
             _pc = decodeTarget;
+            nextPcFrom = NextPcFrom.Decode;
 
             if (fetching.Valid)
             {
@@ -391,6 +405,7 @@ public sealed class PipelineMachine
                 if (!stall)
                 {
                     _pc = fetching.PredictedNext;
+                    nextPcFrom = _pc == fetching.Pc + 4 ? NextPcFrom.Sequential : NextPcFrom.Predicted;
                 }
             }
         }
@@ -429,6 +444,7 @@ public sealed class PipelineMachine
             Commit = committed,
             End = end,
             Events = events ?? (IReadOnlyList<PipelineEvent>)[],
+            Wires = wires with { NextPc = _pc, NextPcFrom = nextPcFrom },
         };
     }
 

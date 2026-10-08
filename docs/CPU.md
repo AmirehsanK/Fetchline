@@ -236,6 +236,18 @@ How it was checked:
   programs spread over every combination of hazard handling, branch decision and predictor,
   "off" included. Stepping back takes a record's changes out again; every cycle of a run shows
   the same thing whether it is reached forwards, backwards or by jumping straight to it.
+- **The wires.** Each record also says what was on the datapath's wires that cycle: where the
+  program counter's next value came from, what ID read, the operands in EX after forwarding, the
+  ALU's inputs and result, and what MEM was handed. The datapath view shows these and works
+  nothing out for itself. They are held to the rest of the record on 60 random programs built
+  all 64 correct ways: a value an event says was forwarded is the value EX used, what is fetched
+  next is fetched from where the counter was sent, what leaves EX is what MEM has a cycle later,
+  and an ALU result that is written to a register is the value the commit record gives two
+  cycles on. The drawing itself is data too (parts, wires and their corners), and a test holds
+  it to the rules of a drawing for every way the pipeline can be built: each wire begins and
+  ends on the parts it names, runs level or upright, and goes round every part in its way. A
+  last test runs the examples and checks that no wire and no part is there for nothing: each is
+  lit by something.
 - **Determinism.** A run can be hashed field by field with FNV-1a. The same program gives the
   same number every time, and the number for `examples/load-use.s` is pinned. Replaying a program
   to a cycle gives the state, the events and the commit that were there the first time, which is

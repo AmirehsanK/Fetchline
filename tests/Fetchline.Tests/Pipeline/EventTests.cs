@@ -293,9 +293,9 @@ public class EventTests
 
         // The number itself is pinned, so a change in what the pipeline does or reports cannot
         // slip by: when this fails after a deliberate change, look at the new trace, then update it.
-        // It last changed when a stall began to say how many more cycles it needs, which is zero
-        // for every stall in this program; the records themselves were the same before and after.
-        Assert.Equal(0xBCD3_D3DA_731E_052Dul, HashOf("load-use.s"));
+        // It last changed when a record began to say what was on the datapath's wires, which is
+        // hashed with the rest of it; the stages, commits and events were the same before and after.
+        Assert.Equal(0xC337_A837_04B3_863Ful, HashOf("load-use.s"));
     }
 
     [Fact]

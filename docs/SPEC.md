@@ -466,7 +466,7 @@ download size is measured and written down.
 link opened in a fresh profile shows the same cycle and the same numbers.
 
 - [x] 8.1 The configuration panel: the what-if switches
-- [ ] 8.2 The datapath as data, and the paths that are active in a cycle
+- [x] 8.2 The datapath as data, and the paths that are active in a cycle
 - [ ] 8.3 The datapath drawn, with values on hover
 - [x] 8.4 The compare table
 - [x] 8.5 The examples menu

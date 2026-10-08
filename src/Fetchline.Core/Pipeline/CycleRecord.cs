@@ -83,6 +83,9 @@ public sealed class CycleRecord
     /// </summary>
     public IReadOnlyList<PipelineEvent> Events { get; init; } = [];
 
+    /// <summary>The values on the datapath's wires during the cycle.</summary>
+    public Wires Wires { get; init; }
+
     /// <summary>Why the machine stopped in this cycle, or <see cref="StopReason.None"/>.</summary>
     public StopReason Stop => End?.Stop ?? Commit?.Stop ?? StopReason.None;
 
@@ -115,6 +118,8 @@ public sealed class CycleRecord
         {
             item.AddTo(ref hash);
         }
+
+        Wires.AddTo(ref hash);
     }
 
     /// <summary>The view of one stage.</summary>
