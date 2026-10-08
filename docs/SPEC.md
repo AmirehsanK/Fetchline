@@ -349,7 +349,7 @@ official tests.
 - [x] 5.4 Branches and jumps decided in EX
 - [x] 5.5 System instructions and traps at the commit point
 - [x] 5.6 Cycle records and events
-- [ ] 5.7 The lockstep checker
+- [x] 5.7 The lockstep checker
 - [ ] 5.8 The staircase layout, the ASCII writer and `fetchline trace`, with golden diagrams
 - [ ] 5.9 Closed-form cycle counts on seeded random programs; the official tests in lockstep
 

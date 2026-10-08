@@ -19,6 +19,9 @@ public class RunTests
 
     public static TheoryData<string> Examples() => AsmAndDisTests.Examples();
 
+    /// <summary>What an example prints, for the tests that run the examples another way.</summary>
+    internal static string ExpectedOutput(string name) => Expected[name];
+
     [Theory]
     [MemberData(nameof(Examples))]
     public void EveryExamplePrintsWhatItShould(string name)
