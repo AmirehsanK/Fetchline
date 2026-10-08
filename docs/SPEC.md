@@ -123,9 +123,10 @@ commit record (`pc`, instruction, register written, memory written, trap, next `
 
 - **Host** (the playground and `run`). `ecall` is a system call and `ebreak` pauses. `sp` starts at
   `0x7FFF_FFF0` and `gp` at `0x1000_0000`. Text is read-only. A fetch at the address just past the
-  last instruction ends the program cleanly; an access outside the mapped regions (the program's
-  segments, 256 MB from the data base for the heap, and 1 MB of stack) stops with a readable
-  message that names the address and the `pc`.
+  last instruction ends the program cleanly, and `ra` starts at that address, so a program whose
+  entry function ends with `ret` ends cleanly too. An access outside the mapped regions (the
+  program's segments, 256 MB from the data base for the heap, and 1 MB of stack) stops with a
+  readable message that names the address and the `pc`.
 - **Bare** (chosen when an ELF has a `tohost` symbol). `ecall` and `ebreak` trap to `mtvec`,
   memory is flat and writable everywhere, registers start at zero, and a non-zero write to
   `tohost` ends the run with the test's verdict: 1 is a pass, `(n << 1) | 1` is test `n` failing.
@@ -323,7 +324,7 @@ instruction pass, the example programs print what they should, and a benchmark i
 
 - [x] 3.1 Memory: sparse pages and mapped regions
 - [x] 3.2 Control signals and the `Exec` functions
-- [ ] 3.3 The reference machine and its commit records
+- [x] 3.3 The reference machine and its commit records
 - [ ] 3.4 The host environment: system calls, pause, clean end, readable faults
 - [ ] 3.5 `fetchline run` and the example programs
 - [ ] 3.6 The benchmark project, and its first numbers in `docs/CPU.md`
