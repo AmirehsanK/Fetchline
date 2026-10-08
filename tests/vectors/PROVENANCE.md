@@ -1,0 +1,168 @@
+# Provenance of the test vectors
+
+Everything under this directory was produced by `tools/build-vectors.sh` in the Vectors
+workflow. Do not edit it by hand; change the script and run the workflow again.
+
+| | |
+|---|---|
+| riscv-tests | <https://github.com/riscv-software-src/riscv-tests> at `bcffa2b3188b040c611f90dc0b6e422f54775a09` |
+| riscv-test-env (its submodule) | `6de71edb142be36319e380ce782c3d1830c65d68` |
+| riscv-opcodes | <https://github.com/riscv/riscv-opcodes> at `5783cf3bea312a48d28e3e2c8a2fcb55603e4bed` |
+| Compiler | `riscv64-unknown-elf-gcc (13.2.0-11ubuntu1+12) 13.2.0` |
+| Binutils | `GNU objdump (2.42-1ubuntu1+6) 2.42` |
+| Build | `make XLEN=32 RISCV_PREFIX=riscv64-unknown-elf-` on the `rv32ui`, `rv32um` and `rv32mi` `-p-` targets of `isa/Makefile` |
+| Listings | `riscv64-unknown-elf-objdump -d -M no-aliases` |
+| Runner | ubuntu24 20260927.320.1 |
+| Workflow run | https://github.com/AmirehsanK/Fetchline/actions/runs/37752043563 |
+| Built | 2026-10-08 |
+
+Both sources are BSD-3-Clause; their licence files are kept beside the files.
+
+## Files (SHA-256)
+
+```
+1b24700313c5720c31e52f914d80c3e652f4b0abd4410d37755165d73d79acc4  riscv-opcodes/LICENSE
+237491f164e0818afcacb8853f665a97dedb585e21c64d784433b80ae870ee69  riscv-opcodes/causes.csv
+caf7f732356167cbc5a93eeb6b37ddbaf5c8483229b50ee7cb7a56bb6d29d493  riscv-opcodes/csrs.csv
+b04bb85358422ec4cc0a44556e7a9b7477597a5c5212617dac6930167b9ba1cc  riscv-opcodes/csrs32.csv
+8ef811f8e1d4435e4c61c1d9e0384032c431106f0ef5068f48d3a506701ce463  riscv-opcodes/rv32_i
+146e297ddbe346f325d993aaf56d7006f1bfde39df584b888b221543def17b97  riscv-opcodes/rv_i
+1a53ea03820b7044de4f0f04d207c1e4fc0ced46deb2c6ed4a3ca268fa37ddbe  riscv-opcodes/rv_m
+4a58b5f0c908d7b748abbeb9df8335dbc53650ea284b738e4351afd49755e646  riscv-opcodes/rv_system
+dd8cc0e2c32fb5658d4aa719cef6ab1b714e2145ba071c9aeb382d9963e4901f  riscv-opcodes/rv_zicsr
+be2d8f7286e06fadafffbde14656e6adb3f923ce704ea0829229d3a3b5f35758  riscv-opcodes/rv_zifencei
+43b7309213293b4323d65301a90e05472579abcd51feb260a850354bcb49ff8f  riscv-tests/LICENSE
+43b7309213293b4323d65301a90e05472579abcd51feb260a850354bcb49ff8f  riscv-tests/LICENSE.env
+e9528689e4f15c528c48c6397deea00027a6978bd19843fadea017604de69e41  riscv-tests/dump/rv32mi-p-breakpoint.dump
+5af9d4a4d3fb8051a8f90fbcd4a5267c54a22f59eb316fe37c21a0fcedec703f  riscv-tests/dump/rv32mi-p-csr.dump
+167de1d3010e53dac94d77cc1db4fc64f3b61f12d5274c252eb4a04511db4068  riscv-tests/dump/rv32mi-p-illegal.dump
+3a1f5bdf12c6c810a1f52c69056a46846755cf42f3dac37ff9db12585ea4b66e  riscv-tests/dump/rv32mi-p-instret_overflow.dump
+802a66ab8c33b949136c287c4e83c8836841b05473d20be79b0e2ee998e2a4a8  riscv-tests/dump/rv32mi-p-lh-misaligned.dump
+f02532a5db5402a7d5a942791c3fb9f59ae0f4c929cb89e7498cd49c91563105  riscv-tests/dump/rv32mi-p-lw-misaligned.dump
+3903747bd06a0aeb4c4fcd6d13a11176c9d8d67030342d3407ef1bfea4b3405d  riscv-tests/dump/rv32mi-p-ma_addr.dump
+a2dd53beeb3ca493c2803c2c5cc9e96442e9b850796e1c4150329c7b10cbc316  riscv-tests/dump/rv32mi-p-ma_fetch.dump
+5d1578104bae26a2975a8c8c3769ddbe2b7905d369f3c3191cb1315a92f17895  riscv-tests/dump/rv32mi-p-mcsr.dump
+4014298cc7497d01d0bc7d7d2b8e5840c6e439f1c7c75646373bcc8472a41a84  riscv-tests/dump/rv32mi-p-pmpaddr.dump
+e37fd51726b69e80b63723284556fa1091785efef40cb00adf83cefa733b6372  riscv-tests/dump/rv32mi-p-sbreak.dump
+bb0d684e945831786cf58d40761e2155fca5e320f34936dd2fca3438ffb36cf1  riscv-tests/dump/rv32mi-p-scall.dump
+1991d06bea10a2624b0f97d6c6eaf7c0589b8e68f507f7c74f856282ff1a520a  riscv-tests/dump/rv32mi-p-sh-misaligned.dump
+80fdf3c2794e2a4bbcd4bcf0ddc9bb18bd95fac0747dcafcd365a5d317c3423c  riscv-tests/dump/rv32mi-p-shamt.dump
+c8b812cb63c2d6969eff19b452ecc068425b1d11204c61e783c405e6a7286663  riscv-tests/dump/rv32mi-p-sw-misaligned.dump
+d0d14b0fa40203e2932216e3e99dcc6a7e574bbefe7dc3ff4d05cac5c836ce2e  riscv-tests/dump/rv32mi-p-zicntr.dump
+1551868fd0b6cc8fddf74a6aedf9601f9c335f50eb6e29e6f3f1c833f6e00865  riscv-tests/dump/rv32ui-p-add.dump
+dbfd54aae3d6aa38351e44e039f5ec6282713348fb11ebf3678a7ce800419027  riscv-tests/dump/rv32ui-p-addi.dump
+4bae0d037745af23a36c58fc549dbf493256a3ddabff35d11f3ab111732aede1  riscv-tests/dump/rv32ui-p-and.dump
+f9755875deb59c7cde8c0aaced321a273bf68e82fff251a7d2b98573af81b1c5  riscv-tests/dump/rv32ui-p-andi.dump
+371f910a50f24b331d58f151ef66d94f62fe0beba6cdb30621db4af3bbe1b6c8  riscv-tests/dump/rv32ui-p-auipc.dump
+7e4122044ac905d1406b36985851b6ea572a73d2279db8df7cef2389f98d2a82  riscv-tests/dump/rv32ui-p-beq.dump
+8f87b61121f87a840923d482392e182aa99547e527994751a4cb2a52e96d4b7f  riscv-tests/dump/rv32ui-p-bge.dump
+d1c79d08277b62c519c55ed7f85e28b2d75f4fc63585ab2c2ea7d98f626348e7  riscv-tests/dump/rv32ui-p-bgeu.dump
+5488c48d365dd1fb25498a03aaefb09e768c7cb81d7fe59b5ba36e06a1cd841c  riscv-tests/dump/rv32ui-p-blt.dump
+e60b277cb7fbc287da739578ea6f2528493e687f4e3b5e123bfafa11804349f0  riscv-tests/dump/rv32ui-p-bltu.dump
+461e3a35846b1574aa22a0e968ff46bc779e976a273dd8ad6443dc9a939caf26  riscv-tests/dump/rv32ui-p-bne.dump
+4ba855af17ece907cdaa077255657bd96df8b604c38944686888fe5a3b359687  riscv-tests/dump/rv32ui-p-fence_i.dump
+45cf98b9113cce873d306b9c2889b0a6d6beb76bbf8f7cc2de4924fb9e7d8f0c  riscv-tests/dump/rv32ui-p-jal.dump
+8e0e04f3fb3cd36b427bb04ec81e6b7bfb51e3791b7f652e135d8e7d919cb52b  riscv-tests/dump/rv32ui-p-jalr.dump
+91253af3f350449ba51ae64aa14eb94ccd9171e36311991bba20044cc9c886c6  riscv-tests/dump/rv32ui-p-lb.dump
+6ead59be6dc66c6039fd2c59565a01d3d1e6fac985d90156c96b2e25fbda4860  riscv-tests/dump/rv32ui-p-lbu.dump
+f33f0a295ba9706dc643b98c18031d0bf1d68622cf528575c77511e0b2d0ebc3  riscv-tests/dump/rv32ui-p-ld_st.dump
+cc721626ac6b995c468efcc9179b3c0b818beff7df12eeba1a1855351f043d22  riscv-tests/dump/rv32ui-p-lh.dump
+17a94540a797c5c9cc95f64c9170161ba599559045caaea593a34adbb809fde8  riscv-tests/dump/rv32ui-p-lhu.dump
+dfe7a790566eb9dd28ef6a303e6b88ca87ea6837c6fe41a7defd7d8f0b5d114a  riscv-tests/dump/rv32ui-p-lui.dump
+246bd96ac0473ee2d9cb9e2b483f22f01661ccfe203a91c00c923b766d05b03e  riscv-tests/dump/rv32ui-p-lw.dump
+dfe75c38a05c5ab02377d93fa4008ededfb43aab4ec68a9a04c0717224167672  riscv-tests/dump/rv32ui-p-ma_data.dump
+02ff81f10f1020ff5174b7bf641efdb67066d7212f8c12a97e4b9840cd5b49a8  riscv-tests/dump/rv32ui-p-or.dump
+d4e5347cba9397f7fcfbd68dd7337dd479e4cb46c863287b8c9178c7a35042a9  riscv-tests/dump/rv32ui-p-ori.dump
+05745daaa0963d54d77bdcd2af466e986183098aa356f7cb2689efea79547cdd  riscv-tests/dump/rv32ui-p-sb.dump
+c69246363ae957473cff0f43d5a05e2f42a25486f1dd68f80aa924a0f5d301f0  riscv-tests/dump/rv32ui-p-sh.dump
+e4c396064308757ff86946b8d7727bfc5e124adb52bbbfd10ac83b8170ac41e6  riscv-tests/dump/rv32ui-p-simple.dump
+15f8ecc0a99c30a02bfe20ecead1ed953a682981107bb4fcd260bc77364a44fe  riscv-tests/dump/rv32ui-p-sll.dump
+069ec1f1c70e833a47a538fb302456cdcb8b543d1ac0cd1260a1da8aa7a3042f  riscv-tests/dump/rv32ui-p-slli.dump
+3795f0bd11a8f8d5892dd832fb4152ac6041cf6a08ee10d3e522f6c91c1a94f3  riscv-tests/dump/rv32ui-p-slt.dump
+88fdfdb58fbf20373e3853cef4756764915bfe37860b75eba5527f88e04e33ba  riscv-tests/dump/rv32ui-p-slti.dump
+fc08ca7ce1ef649ae2ec489470f50272248358576f0ca42d63be8fe76b48b3bf  riscv-tests/dump/rv32ui-p-sltiu.dump
+a2f5885d08469cce6ddffdbdb98754e6206c7907448ee4181ef2f8c1fba2c9ff  riscv-tests/dump/rv32ui-p-sltu.dump
+eada71ed619417587d0da38925fb15c81d0fca54382b235483e5f4e917df9a56  riscv-tests/dump/rv32ui-p-sra.dump
+5bf6908702d3a9763feeb879bb21b87ba6633d6aba11473ff2ef31f4338565d8  riscv-tests/dump/rv32ui-p-srai.dump
+aa729535daa7cb04d4a2cec1f007f7b7f2db7b06d09bc29c1ccf53786316388e  riscv-tests/dump/rv32ui-p-srl.dump
+7f42e4cf00667d98e83c7473346d3d1cc74ecc27510fbb3c2f61fdb3c3998acf  riscv-tests/dump/rv32ui-p-srli.dump
+ec1f8d0bdc79e6a82484b40672e228aed8db917e3d2be815fce34c203893c2d0  riscv-tests/dump/rv32ui-p-st_ld.dump
+3372d24a87940baa9362168e8efa1e2fb3a5a231606194ee42e98219b1d45782  riscv-tests/dump/rv32ui-p-sub.dump
+cb2d81f66fa576f8059fd775e1bdf62f94940bbe0f1ae59850b5cd7ec59ce4d8  riscv-tests/dump/rv32ui-p-sw.dump
+a7a53e891d082d34715f515c58199fb2290f6b9e3059845995372121bd9101d9  riscv-tests/dump/rv32ui-p-xor.dump
+d483787cb158c24b48b31eaa175f9a0f59797965efd994752c14c8363b6847ff  riscv-tests/dump/rv32ui-p-xori.dump
+b8cc4940d34784f51292248e33fa97194b0c8c20b0c157102555b004b36dfc24  riscv-tests/dump/rv32um-p-div.dump
+d519e964f2b7970bd6439433385c519000ed0e7f2a131bc161fc55c9f95f73a4  riscv-tests/dump/rv32um-p-divu.dump
+ab0d24856addc2ed284290ce147c6c5f7f42c6c97b64049ae797000f529997a2  riscv-tests/dump/rv32um-p-mul.dump
+b59755686ba904819a80d06e9470d6d41ae2618bd002c27eecce6021bc8e30a4  riscv-tests/dump/rv32um-p-mulh.dump
+c7b2691804b249165e5e06156bcd98e98e896dbff2bb7ab24ebae9d1567925e0  riscv-tests/dump/rv32um-p-mulhsu.dump
+4171428f3a629d0d586ea51e17a6dfb00db0e677c13deab4a9365d89a12c4def  riscv-tests/dump/rv32um-p-mulhu.dump
+acd8b2d5d6f7e8b6e9c2a7fbb4314b89949cc96cc028d341e8cd72df36fda2fb  riscv-tests/dump/rv32um-p-rem.dump
+109dd0f39207d7033e44132b03a803824e7406044e75996f0fbbf180ffb55344  riscv-tests/dump/rv32um-p-remu.dump
+0665bc64cb588b5cbe639f0df0c04f180fa75bfbcd23bee70e6629dd2ab3e711  riscv-tests/elf/rv32mi-p-breakpoint
+de161c8633330576696da0cea2f7160b7a19bbad31a1c3afcaa052e8600dc24c  riscv-tests/elf/rv32mi-p-csr
+d35def78db81a22614953dc72fb14eb9311d34cffcd2740c10a9e7404c4d0a2f  riscv-tests/elf/rv32mi-p-illegal
+f7dacce44b6d7788825cb630b79cfc0803387e990072bdfb14eb8f48003450d9  riscv-tests/elf/rv32mi-p-instret_overflow
+b1550b2e220dc0d79bd6c5ea20d5deaaf4075b19225ad315d2a875e160e52157  riscv-tests/elf/rv32mi-p-lh-misaligned
+b0f8b940d5491deaca66356324c24968c2ebc702ac0de0616f7a16f5a16987d0  riscv-tests/elf/rv32mi-p-lw-misaligned
+b48c5674972de33d44322aedf1aa821d82bfe61bc1f259d8c6b2fa1ed0d2601b  riscv-tests/elf/rv32mi-p-ma_addr
+7b7548bf54c670e63d1b8e41ef871606fab215232dd81e7fb84ac8ebbfc6f417  riscv-tests/elf/rv32mi-p-ma_fetch
+4ec8f07a18dc4d0620cb97d62a0f2c305d26b1b4c561107f50f164f1715df058  riscv-tests/elf/rv32mi-p-mcsr
+51e5a56dac86373dedb01fc9ab77550e9e7071ee55e805c8ddf19bcd717e6788  riscv-tests/elf/rv32mi-p-pmpaddr
+57430906c3442d40104aefbe6c4feb1aa047d822f9188c3f6e933a4c99ba6a00  riscv-tests/elf/rv32mi-p-sbreak
+f3166936ba009575087400fb7d5a43cb39519364c6d7fcfd927e0ae6c8545fd8  riscv-tests/elf/rv32mi-p-scall
+0b6fee5fc12395fd035bcdef9d0352dbe3bcf310f4bf8a2401c198546744a151  riscv-tests/elf/rv32mi-p-sh-misaligned
+43477795c06061767e65283af5c92d6e554bfd8101ae9706e001d26a4980e71b  riscv-tests/elf/rv32mi-p-shamt
+cda4a3299cb354c71e44239cb110a0074792567d099f6a39e79e00b013e96ebc  riscv-tests/elf/rv32mi-p-sw-misaligned
+f33c8da42ea0fb9e19239aad749cd5c81bd756fa2a822bcf5325805a31c17ce1  riscv-tests/elf/rv32mi-p-zicntr
+23e96ff97b4a4bc127a0cf156c6ee6fb8fe9a25d595de55a96ed7663216f3aba  riscv-tests/elf/rv32ui-p-add
+514172ae322035846abc37e9f348d907737ed6e8a3a8f4269fcc52d1f62d4c4d  riscv-tests/elf/rv32ui-p-addi
+75f4ebd8ceb32f14e7a9369fddb52ca1d28a6ca9d70b134b0751ea2f867f58bb  riscv-tests/elf/rv32ui-p-and
+1629ac0a82290560d8ed078719bfb3188f796645c2ded17a4261b0cd3d8f4d2d  riscv-tests/elf/rv32ui-p-andi
+846a3228ef7e4cca7bcb72d0e114b7d6c0ad94c52d82d04bd0eab58886fbf19e  riscv-tests/elf/rv32ui-p-auipc
+fad88edb93ccae41c5f15ad0acd76b29e23a2df9f62ed8a1a5436e66a957501f  riscv-tests/elf/rv32ui-p-beq
+dcb98702120a500d8720444ea67fb796139d41ea65e1f9cdc9791be33f295dc4  riscv-tests/elf/rv32ui-p-bge
+c7df432bd9f6e0856b5a8bf90c0b47ac0ceffd93e2902e7882b7b26b05fd9b33  riscv-tests/elf/rv32ui-p-bgeu
+5193f0f8c36fba8c11ade75be08dcb080b48e596e9903fb9ca816f82c49c597d  riscv-tests/elf/rv32ui-p-blt
+b75bc93583a45efa17f728eddb586df8000eb7b5941ba6bf2fca126834861c12  riscv-tests/elf/rv32ui-p-bltu
+c8079a2891739fd4c27148a6872f41dc843589fd7c5dc6d11d4fb970093641a9  riscv-tests/elf/rv32ui-p-bne
+911e52df3a1412fa733cd3d280fd0aca6618ac9d5532214ecf35ffe69199fc60  riscv-tests/elf/rv32ui-p-fence_i
+10c656b5df0525a3c81f90e4c7308e534566783f1be5b78937f6d6dd81a680ef  riscv-tests/elf/rv32ui-p-jal
+1e4c71a164f32dd9e408197d06b2aa2610287572a564dcaedb834d84f0493fe2  riscv-tests/elf/rv32ui-p-jalr
+b19ba209fde9af249ee9716eb30a62316b5d08395eaf3283a98ad21b5b35cae1  riscv-tests/elf/rv32ui-p-lb
+9e7b09b25fb7a88288cd3a83a36a786ae58859bd83b9b544fb36a2e0cdcd3f38  riscv-tests/elf/rv32ui-p-lbu
+9558b9c7c9d8e2c74ebc44c5f8412edd7204180e4dd1803bfb4f2abc69885cd9  riscv-tests/elf/rv32ui-p-ld_st
+5d713b20e4aac69693ee6a01e313f35560a9d48a609e21de1e84ddedcc3448e3  riscv-tests/elf/rv32ui-p-lh
+da9e19a26eee917e7830c480d7bd557f032bd036244d16347f5b67ced9604fd3  riscv-tests/elf/rv32ui-p-lhu
+31c1100ab49b59f26c97a10d433432b64e1cc39cfb3d6292494d95dcdfb747fb  riscv-tests/elf/rv32ui-p-lui
+a0569bd88204d6a611e6b0a6b0fd8ab1557ff6401c15eb17b93765ef4ed015dc  riscv-tests/elf/rv32ui-p-lw
+679f2df55be4448412da8407786dd458c05c586f078414925568e2cf9c4ed56d  riscv-tests/elf/rv32ui-p-ma_data
+ff8f0d75e333950e31151208d551e7db524bb762816bc4c99aeaa25ceade5dc3  riscv-tests/elf/rv32ui-p-or
+c49fa0f9a8c3cdfe9af07fb2c7707246dc96848c282d5f3ac461aa3b225de8f6  riscv-tests/elf/rv32ui-p-ori
+8762d0e61f2baa61b1946d50ebaeaa4cb3719aa2975d497669cf1cd04a83b0ba  riscv-tests/elf/rv32ui-p-sb
+11dc0b1145e44438f09534ccfdc8dd914658760776627f9d7245bd8528f825cb  riscv-tests/elf/rv32ui-p-sh
+e3eb1ddc27663c181070af4fe1d6ef060e3e98500372cf3ded726e30742f6b16  riscv-tests/elf/rv32ui-p-simple
+365e44a1ed8676a0c8650a5b5452fad92c26f2bb9ad2a6d6c5afe62a6a9731ac  riscv-tests/elf/rv32ui-p-sll
+eb319a56caf9dc2071e6919acb0672203ee602fa771b77867c7d728002b13813  riscv-tests/elf/rv32ui-p-slli
+0cc12a98844e43431c1fddb6dc45cb48e26b8f5b32b7406e4506281a561a6603  riscv-tests/elf/rv32ui-p-slt
+03b1de601f8c043d37ff11f6ab60280abbaf929eb848ff0959cb90cc4e13629a  riscv-tests/elf/rv32ui-p-slti
+cfcafedf5a4f02561feb469e45cb317ff415f6cd5134bd0002af00f84336a281  riscv-tests/elf/rv32ui-p-sltiu
+54696ba0b697e905c54b5a82aeb67cc14ebd5e18d07fdf228a0d6762ef3b39e1  riscv-tests/elf/rv32ui-p-sltu
+0b57ce8e12cbf187b7e7f8c434f90d9cb10eb73e5b0e713736f90740906eb6ad  riscv-tests/elf/rv32ui-p-sra
+0d32ba7f9dc03981e1b25bb4b7ff5bea21b7c79d302b707f99888d675e3a834e  riscv-tests/elf/rv32ui-p-srai
+ef1d1dfc4de32bdc434d2a8b3eef08dd2a0555812f7a530bf8102838f8c20e85  riscv-tests/elf/rv32ui-p-srl
+d523c075367f968016047d5acba6b9a149181bd067b85d9ce994184b643e2e61  riscv-tests/elf/rv32ui-p-srli
+6b62b315c3ed15661d67068f4993fd0b4008cdb87629a30d112cd147ac937efa  riscv-tests/elf/rv32ui-p-st_ld
+1630647f21703911085cd91d41a7596efd9f60782dbd2be4f27498cf77843ffd  riscv-tests/elf/rv32ui-p-sub
+9697040f6831d938ad8a8df4510135de526d0b1cec66f2b47b785486ab86986d  riscv-tests/elf/rv32ui-p-sw
+4bc2284c9a77ecc56f67eec47006273f9ac2eade9222af6f05715a488fb40772  riscv-tests/elf/rv32ui-p-xor
+f04ccd8118324a3e438726c811a4f8bf5f4c57571532fb1335c2e988d75625a4  riscv-tests/elf/rv32ui-p-xori
+f348544433014a814c479c0659c8b5a4a134f3c6c69fe539c5999536b40e59a8  riscv-tests/elf/rv32um-p-div
+bb22dded2d4efdc689028e15f7486c84fed7054ce921ba217b4db9855244867c  riscv-tests/elf/rv32um-p-divu
+bc19be8d0bcf7acdead20c393740cb6e3e82849eb9d33ada8bc85772dc301bec  riscv-tests/elf/rv32um-p-mul
+d13fef25971f35aa497bd6311c3be2c36460123a7daadce363ca923ddeb49618  riscv-tests/elf/rv32um-p-mulh
+0defc52d0d3bf0dfcf344bd2f3da430586c27d773c2ebdc8361d31394d70843e  riscv-tests/elf/rv32um-p-mulhsu
+827223a67a9617783ecf5f20469e08d6654073d8b62766507df9d0aea2126cec  riscv-tests/elf/rv32um-p-mulhu
+84ca509dd56caf292c461fc5fe6afbfd71681e48e9deb48bb257247d0023f98e  riscv-tests/elf/rv32um-p-rem
+b0339f2290eb735a21615c366721d44599b2e762a19a05d33702ee36ec890334  riscv-tests/elf/rv32um-p-remu
+```
