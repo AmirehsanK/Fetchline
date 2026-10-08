@@ -1,0 +1,24 @@
+                             50   51   52   53   54   55   56   57   58   59   60   61   62   63   64   65   66   67   68
+ 0x14 ble   t0, t1, loop     WB
+ 0x0c add   a0, a0, t0       ID   EX   MEM  WB
+ 0x10 addi  t0, t0, 1        IF   ID   EX   MEM  WB
+ 0x14 ble   t0, t1, loop          IF   ID   EX   MEM  WB
+ 0x18 li    a7, 1                      IF   ID   EX   MEM  WB
+ 0x1c ecall                                 IF   ID   EX   MEM  WB
+ 0x20 li    a0, '\n'                             IF   ID   EX   --
+ 0x24 li    a7, 11                                    IF   ID   --
+ 0x28 ecall                                                IF   --
+ 0x20 li    a0, '\n'                                            IF   ID   EX   MEM  WB
+ 0x24 li    a7, 11                                                   IF   ID   EX   MEM  WB
+ 0x28 ecall                                                               IF   ID   EX   MEM  WB
+ 0x2c li    a7, 10                                                             IF   ID   EX   --
+ 0x30 ecall                                                                         IF   ID   --
+ 0x2c li    a7, 10                                                                            IF   ID   EX   MEM  WB
+ 0x30 ecall                                                                                        IF   ID   EX   MEM  WB
+
+ c53  forward  EX/MEM -> EX.B   t0 from addi
+ c56  flush    ecall (MEM) is a system instruction; 3 instructions behind it are fetched again
+ c62  flush    ecall (MEM) is a system instruction; 2 instructions behind it are fetched again
+ -- squashed: fetched, then thrown away
+ cycles 50 to 68 of 68; --from and --cycles show the rest
+ 40 instructions, 68 cycles, CPI 1.70, 0 stalls, 11 forwards, 11 flushes

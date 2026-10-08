@@ -1,0 +1,34 @@
+                             1    2    3    4    5    6    7    8    9    10   11   12   13   14   15   16   17   18   19   20   21   22
+ 0x00 li    a0, 0            IF   ID   EX   MEM  WB
+ 0x04 li    t0, 1                 IF   ID   EX   MEM  WB
+ 0x08 li    t1, 10                     IF   ID   EX   MEM  WB
+ 0x0c add   a0, a0, t0                      IF   ID   EX   MEM  WB
+ 0x10 addi  t0, t0, 1                            IF   ID   EX   MEM  WB
+ 0x14 ble   t0, t1, loop                              IF   ID   EX   MEM  WB
+ 0x18 li    a7, 1                                          IF   ID   --
+ 0x1c ecall                                                     IF   --
+ 0x0c add   a0, a0, t0                                               IF   ID   EX   MEM  WB
+ 0x10 addi  t0, t0, 1                                                     IF   ID   EX   MEM  WB
+ 0x14 ble   t0, t1, loop                                                       IF   ID   EX   MEM  WB
+ 0x18 li    a7, 1                                                                   IF   ID   --
+ 0x1c ecall                                                                              IF   --
+ 0x0c add   a0, a0, t0                                                                        IF   ID   EX   MEM  WB
+ 0x10 addi  t0, t0, 1                                                                              IF   ID   EX   MEM  WB
+ 0x14 ble   t0, t1, loop                                                                                IF   ID   EX   MEM  WB
+ 0x18 li    a7, 1                                                                                            IF   ID   --
+ 0x1c ecall                                                                                                       IF   --
+ 0x0c add   a0, a0, t0                                                                                                 IF   ID   EX   MEM
+ 0x10 addi  t0, t0, 1                                                                                                       IF   ID   EX
+ 0x14 ble   t0, t1, loop                                                                                                         IF   ID
+ 0x18 li    a7, 1                                                                                                                     IF
+
+ c6   forward  MEM/WB -> EX.B   t0 from li
+ c8   forward  EX/MEM -> EX.B   t0 from addi
+ c8   flush    ble (EX) is taken to loop; 2 instructions behind it are squashed
+ c13  forward  EX/MEM -> EX.B   t0 from addi
+ c13  flush    ble (EX) is taken to loop; 2 instructions behind it are squashed
+ c18  forward  EX/MEM -> EX.B   t0 from addi
+ c18  flush    ble (EX) is taken to loop; 2 instructions behind it are squashed
+ -- squashed: fetched, then thrown away
+ cycles 1 to 22 of 68; --from and --cycles show the rest
+ 40 instructions, 68 cycles, CPI 1.70, 0 stalls, 11 forwards, 11 flushes

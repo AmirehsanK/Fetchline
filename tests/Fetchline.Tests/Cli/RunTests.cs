@@ -14,6 +14,8 @@ public class RunTests
         ["bubble-sort.s"] = "1 2 3 5 7 8 9 \n",
         ["gcd.s"] = "21\n",
         ["load-use.s"] = string.Empty,
+        ["forwarding.s"] = string.Empty,
+        ["branch.s"] = string.Empty,
         ["primes.s"] = "1229\n",
     };
 

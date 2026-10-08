@@ -30,7 +30,16 @@ The repository is <https://github.com/AmirehsanK/Fetchline> (private since it wa
 dotnet build                      # every project; warnings are errors
 dotnet test                       # every test project
 dotnet run --project src/Fetchline.Cli -- <command>   # the command line, from source
+dotnet run -c Release --project bench/Fetchline.Benchmarks -- --filter '*'   # the figures in docs/CPU.md
 ```
+
+The diagrams under `tests/golden` are compared exactly. After a deliberate change to what a trace
+looks like, set `FETCHLINE_UPDATE_GOLDEN=1`, run the tests once, and read every file that changed
+before committing it: they are the pictures the tool draws.
+
+A PowerShell command that pipes a long-running `dotnet` into `Select-Object -First N` kills it
+when N lines have arrived. That is how a benchmark run was once cut short; send the output to a
+file and read the file instead.
 
 ## Conventions
 

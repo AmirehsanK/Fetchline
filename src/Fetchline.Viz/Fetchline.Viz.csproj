@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Everything between the engine's records and a picture of them: the staircase layout, the
+    explanations, the text, JSON and Kanata writers. It has no UI dependency, so it is unit-tested
+    and shared by the command line and the browser.
+  -->
+  <PropertyGroup>
+    <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fetchline.Core\Fetchline.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fetchline.Tests" />
+  </ItemGroup>
+
+</Project>

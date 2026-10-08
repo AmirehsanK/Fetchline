@@ -1,0 +1,10 @@
+                            1    2    3    4    5    6    7    8    9
+ 0x00 sub  x2, x3, x1       IF   ID   EX   MEM  WB
+ 0x04 and  x12, x2, x5           IF   ID   EX   MEM  WB
+ 0x08 or   x13, x6, x2                IF   ID   EX   MEM  WB
+ 0x0c add  x14, x2, x2                     IF   ID   EX   MEM  WB
+ 0x10 sw   x15, 100(x2)                         IF   ID   EX   MEM  WB
+
+ c4  forward  EX/MEM -> EX.A   x2 from sub
+ c5  forward  MEM/WB -> EX.B   x2 from sub
+ 5 instructions, 9 cycles, CPI 1.80, 0 stalls, 2 forwards

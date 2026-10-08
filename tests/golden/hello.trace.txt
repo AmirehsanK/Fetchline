@@ -1,0 +1,14 @@
+                            1    2    3    4    5    6    7    8    9    10   11   12   13
+ 0x00 auipc a0, 0x10000     IF   ID   EX   MEM  WB
+ 0x04 mv    a0, a0               IF   ID   EX   MEM  WB
+ 0x08 li    a7, 4                     IF   ID   EX   MEM  WB
+ 0x0c ecall                                IF   ID   EX   MEM  WB
+ 0x10 li    a7, 10                              IF   ID   EX   --
+ 0x14 ecall                                          IF   ID   --
+ 0x10 li    a7, 10                                             IF   ID   EX   MEM  WB
+ 0x14 ecall                                                         IF   ID   EX   MEM  WB
+
+ c4  forward  EX/MEM -> EX.A   a0 from auipc
+ c7  flush    ecall (MEM) is a system instruction; 2 instructions behind it are fetched again
+ -- squashed: fetched, then thrown away
+ 6 instructions, 13 cycles, CPI 2.17, 0 stalls, 1 forward, 1 flush

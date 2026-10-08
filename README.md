@@ -20,9 +20,29 @@ dotnet test
 
 ## Try it
 
-What works so far is the assembler, the disassembler and the reference machine, which runs one
-instruction at a time and passes the official RISC-V tests (64 of 66; the other two need
-features a machine-mode core does not have). The pipeline is next.
+The command line works; the browser playground is not built yet.
+
+```bash
+dotnet run --project src/Fetchline.Cli -- trace examples/load-use.s
+```
+
+```
+                          1    2    3    4    5    6    7    8
+ 0x00 lw   x4, 0(x2)      IF   ID   EX   MEM  WB
+ 0x04 add  x5, x4, x6          IF   ID   ID   EX   MEM  WB
+ 0x08 sub  x7, x5, x4               IF   IF   ID   EX   MEM  WB
+
+ c3  stall    load-use: add (ID) needs x4; lw (EX) has it only after MEM
+ c5  forward  MEM/WB -> EX.A   x4 from lw
+ c6  forward  EX/MEM -> EX.A   x5 from add
+ 3 instructions, 8 cycles, CPI 2.67, 1 stall, 2 forwards
+```
+
+That is the five-stage pipeline: forwarding, the load-use stall, branches decided in EX, and
+system instructions and traps taken at the commit point. Underneath it is a reference machine
+that runs one instruction at a time and passes the official RISC-V tests (64 of 66; the other
+two need features a machine-mode core does not have). The pipeline is checked against it
+instruction by instruction.
 
 ```bash
 dotnet run --project src/Fetchline.Cli -- run examples/fib.s
