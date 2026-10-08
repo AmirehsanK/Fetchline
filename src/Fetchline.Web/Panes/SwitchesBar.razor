@@ -1,0 +1,31 @@
+@using Fetchline.Viz.Explain
+
+@*
+    The what-if switches: how the pipeline is built. Each is a name and its positions, the one
+    it is in lit; choosing another builds the pipeline that way and starts the run again.
+*@
+<nav class="switches-bar" aria-label="@Messages.Switches">
+    @foreach (var group in SwitchBoard.Of(Config, Messages))
+    {
+        <span class="switch" role="group" aria-label="@group.Title">
+            <span class="switch-title">@group.Title</span>
+            @foreach (var option in group.Options)
+            {
+                <button type="button" class="tab @(option.Chosen ? "inverse" : null)" aria-pressed="@(option.Chosen ? "true" : "false")"
+                        @onclick="() => OnChange.InvokeAsync(option.Gives)">@option.Name</button>
+            }
+        </span>
+    }
+</nav>
+
+@code {
+    [Parameter, EditorRequired]
+    public PipelineConfig Config { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IMessages Messages { get; set; } = default!;
+
+    /// <summary>Called with the new configuration when a switch is moved.</summary>
+    [Parameter]
+    public EventCallback<PipelineConfig> OnChange { get; set; }
+}

@@ -279,6 +279,11 @@ running again from reset, which gives the same run because the machine has no ot
   and scrub move within the records the session holds, and replay from reset only for a cycle
   older than those. The status line says how the run stands: ready, at a cycle, running, paused
   at an `ebreak`, ended, exited with a code, stopped and why, and wrong since which cycle.
+- **Switches:** the what-if switches of section 7 are a row under the status line, each a name
+  and its positions with the one chosen lit, named as the command line names them. Moving one
+  builds the pipeline that way and starts the run again. What can be switched to is exactly
+  what the tests run everything on: the 64 correct configurations, and the same with hazard
+  handling off. The buffer's size is offered only while the predictor is one that has a buffer.
 - **Compare:** the current program under every configuration, as a table of cycles and CPI.
 - **Share and export:** a link holds the source, configuration and cycle (deflate, base64url, size
   capped and validated before use). The staircase exports as SVG or PNG, the trace as JSON or
@@ -445,7 +450,7 @@ download size is measured and written down.
 **M8. Datapath view, configuration, compare table, examples, share links, timeline.** Done when a
 link opened in a fresh profile shows the same cycle and the same numbers.
 
-- [ ] 8.1 The configuration panel: the what-if switches
+- [x] 8.1 The configuration panel: the what-if switches
 - [ ] 8.2 The datapath as data, and the paths that are active in a cycle
 - [ ] 8.3 The datapath drawn, with values on hover
 - [ ] 8.4 The compare table

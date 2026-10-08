@@ -11,9 +11,10 @@
 <div class="desk">
     <header class="status">
         <span class="inverse">&nbsp;FETCHLINE&nbsp;</span>
-        <span>@SwitchNames.Of(_session.Config)</span>
         <span class="status-end" role="status">@Standing.Of(_session, Going, Messages)</span>
     </header>
+
+    <SwitchesBar Config="_session.Config" Messages="Messages" OnChange="Rebuild" />
 
     <SourcePane View="_source" Record="_session.Record" Messages="Messages" OnEdit="Edit" />
 
@@ -98,10 +99,15 @@
     }
 
     // Every keystroke in the editor is a new program, and so a new run from reset.
-    private void Edit(string text)
+    private void Edit(string text) => Load(text, _session?.Config);
+
+    // A switch moved is the same program on a pipeline built another way: a new run again.
+    private void Rebuild(PipelineConfig config) => Load(_session.Source, config);
+
+    private void Load(string text, PipelineConfig? config)
     {
         Halt();
-        _session = new Session(text, _session?.Config);
+        _session = new Session(text, config);
         _source = SourceView.Of(_session.Assembly);
         _labels = _session.Program is { } program ? new InstructionLabels(program) : null;
     }

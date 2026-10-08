@@ -219,7 +219,7 @@ body {
 .desk {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "status" "source" "keys" "pipeline" "log" "side";
+    grid-template-areas: "status" "switches" "source" "keys" "pipeline" "log" "side";
     gap: 0.9lh 2ch;
 }
 
@@ -233,6 +233,25 @@ body {
 
 .status-end {
     margin-left: auto;
+}
+
+/* The what-if switches: a name, dim, and its positions, the one chosen lit. */
+.switches-bar {
+    grid-area: switches;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2lh 3ch;
+}
+
+.switch {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0 0.5ch;
+}
+
+.switch-title {
+    margin-right: 0.5ch;
+    color: var(--dim);
 }
 
 /* The registers, and under or beside them the pane that memory, console and counters share. */
@@ -255,11 +274,12 @@ body {
     .desk {
         grid-template-columns: minmax(40ch, 36%) minmax(0, 1fr);
         grid-template-areas:
-            "status status"
-            "source pipeline"
-            "source log"
-            "keys   keys"
-            "side   side";
+            "status   status"
+            "switches switches"
+            "source   pipeline"
+            "source   log"
+            "keys     keys"
+            "side     side";
     }
 
     .side {
@@ -276,12 +296,13 @@ body {
     .desk {
         height: 100%;
         grid-template-columns: minmax(38ch, 27%) minmax(0, 1fr) 33ch;
-        grid-template-rows: auto minmax(0, 1.7fr) minmax(0, 1fr) auto;
+        grid-template-rows: auto auto minmax(0, 1.7fr) minmax(0, 1fr) auto;
         grid-template-areas:
-            "status status   status"
-            "source pipeline side"
-            "source log      side"
-            "keys   keys     keys";
+            "status   status   status"
+            "switches switches switches"
+            "source   pipeline side"
+            "source   log      side"
+            "keys     keys     keys";
     }
 
     /* The registers take what they need, and give some back to scrolling before the pane under them goes short. */

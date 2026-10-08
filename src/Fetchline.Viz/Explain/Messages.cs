@@ -185,6 +185,15 @@ public interface IMessages
     /// <summary>The heading of the column for the predictor.</summary>
     string PredictorHeading { get; }
 
+    /// <summary>The name of the switch for the size of the branch target buffer.</summary>
+    string BufferHeading { get; }
+
+    /// <summary>The name of the switch for how many cycles a multiply or divide takes.</summary>
+    string MultiplyHeading { get; }
+
+    /// <summary>What the row of switches is, for a reader who cannot see it as a row.</summary>
+    string Switches { get; }
+
     string CyclesHeading { get; }
 
     string CpiHeading { get; }
@@ -393,6 +402,12 @@ public sealed class EnglishMessages : IMessages
     public string BranchHeading => "branch";
 
     public string PredictorHeading => "predictor";
+
+    public string BufferHeading => "btb";
+
+    public string MultiplyHeading => "muldiv";
+
+    public string Switches => "How the pipeline is built";
 
     public string CyclesHeading => "cycles";
 
