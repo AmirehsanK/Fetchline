@@ -308,7 +308,7 @@ assembling a disassembled random word gives the word back, and every error has a
 
 - [x] 2.1 Diagnostics and the lexer
 - [x] 2.2 Expressions
-- [ ] 2.3 The statement parser: labels, directives, operands
+- [x] 2.3 The statement parser: labels, directives, operands
 - [ ] 2.4 `Program`, sections and the layout pass
 - [ ] 2.5 Encoding real instructions, with relocation operators
 - [ ] 2.6 Pseudo-instructions
