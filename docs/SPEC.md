@@ -321,7 +321,7 @@ assembling a disassembled random word gives the word back, and every error has a
 instruction pass, the example programs print what they should, and a benchmark is recorded in
 `docs/CPU.md`.
 
-- [ ] 3.1 Memory: sparse pages and mapped regions
+- [x] 3.1 Memory: sparse pages and mapped regions
 - [ ] 3.2 Control signals and the `Exec` functions
 - [ ] 3.3 The reference machine and its commit records
 - [ ] 3.4 The host environment: system calls, pause, clean end, readable faults
