@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/bench/">
+    <Project Path="bench/Fetchline.Benchmarks/Fetchline.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Fetchline.Cli/Fetchline.Cli.csproj" />
     <Project Path="src/Fetchline.Core/Fetchline.Core.csproj" />

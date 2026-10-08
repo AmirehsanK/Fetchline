@@ -52,6 +52,8 @@ Each has a test.
 - **`Fetchline.Core` has no package references, no I/O, no clock, no unseeded randomness.**
   `CorePurityTests` reads the compiled assembly and fails on the first reference to any of them.
   Do not add an exception to its lists to make something compile; pass the data in instead.
+  One trap: a method that uses `yield return` makes the compiler emit a state machine that reads
+  `Environment.CurrentManagedThreadId`, and the test rejects it. In the engine, build a list.
 - **Nothing outside the instruction table knows an opcode.** The decoder, the encoder, the
   assembler and the disassembler all read `Isa/InstructionSet`, and that table is checked against
   the official `riscv-opcodes` files.

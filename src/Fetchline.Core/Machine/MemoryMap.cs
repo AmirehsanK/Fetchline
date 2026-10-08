@@ -32,47 +32,72 @@ public sealed class MemoryMap
 
     private const uint StackEnd = 0x8000_0000;
 
-    // Exact regions are the program's own segments, each with its own rights. Open regions are
-    // the heap and the stack: readable and writable, and searched only when no segment matches,
-    // so that a read-only segment inside the data area stays read-only.
-    private readonly List<Region> _segments = [];
-    private readonly List<Region> _open = [];
+    // No two regions overlap, so an address is in one region or in none, and remembering the
+    // region of the last access is always safe.
+    private readonly Region[] _regions;
+    private Region _recent;
+
+    private MemoryMap(Region[] regions)
+    {
+        _regions = regions;
+        _recent = regions.Length > 0 ? regions[0] : new Region(string.Empty, 0, 0, SegmentFlags.None);
+    }
 
     /// <summary>The map for a program that runs with the host's system calls.</summary>
     public static MemoryMap ForHost(Program program)
     {
-        var map = new MemoryMap();
-        foreach (var segment in program.Segments)
-        {
-            map._segments.Add(new Region(segment.Name, segment.Address, segment.Size, segment.Flags));
-        }
+        // The program's own segments come first, each with its own rights.
+        var segments = program.Segments
+            .Where(segment => segment.Size > 0)
+            .Select(segment => new Region(segment.Name, segment.Address, segment.Size, segment.Flags))
+            .ToList();
 
         // The data area starts at the lowest segment that is not code, or at the usual place.
         var data = program.Segments.Where(segment => !segment.IsExecutable).Select(segment => segment.Address);
         var start = data.DefaultIfEmpty(DataBase).Min() & ~(uint)(Memory.PageSize - 1);
         var size = (uint)Math.Min(HeapSize, StackBase - (ulong)Math.Min(start, StackBase));
-        if (size > 0)
-        {
-            map._open.Add(new Region("data and heap", start, size, SegmentFlags.Read | SegmentFlags.Write));
-        }
+        const SegmentFlags readWrite = SegmentFlags.Read | SegmentFlags.Write;
 
-        map._open.Add(new Region("stack", StackBase, StackEnd - StackBase, SegmentFlags.Read | SegmentFlags.Write));
-        return map;
+        // The heap and the stack are whatever of their ranges the segments leave over, so that
+        // a read-only segment inside the data area stays read-only.
+        var regions = new List<Region>(segments);
+        regions.AddRange(Around(new Region("data and heap", start, size, readWrite), segments));
+        regions.AddRange(Around(new Region("stack", StackBase, StackEnd - StackBase, readWrite), segments));
+        return new MemoryMap([.. regions]);
     }
 
     /// <summary>Whether every byte of an access is allowed.</summary>
-    public bool Allows(uint address, int bytes, Access access) =>
-        Find(address, access) is not null && (bytes == 1 || Find(address + (uint)bytes - 1, access) is not null);
+    public bool Allows(uint address, int bytes, Access access)
+    {
+        var needed = Needed(access);
+        var recent = _recent;
+        var offset = address - recent.Start;
+        if (offset < recent.Size && recent.Size - offset >= (uint)bytes)
+        {
+            return (recent.Flags & needed) != 0;
+        }
+
+        // The access is somewhere else, or straddles two regions: both of its ends must be allowed.
+        var first = Containing(address);
+        if (first is null || (first.Flags & needed) == 0)
+        {
+            return false;
+        }
+
+        _recent = first;
+        return bytes == 1 || (Containing(address + (uint)bytes - 1) is { } last && (last.Flags & needed) != 0);
+    }
 
     /// <summary>Why an access is not allowed, as a sentence for the person who wrote the program.</summary>
     public string Explain(uint address, int bytes, Access access)
     {
         // Name the first byte that is in the wrong place, which need not be the first byte.
-        var bad = Find(address, access) is null ? address : address + (uint)bytes - 1;
+        var needed = Needed(access);
+        var firstIsFine = Containing(address) is { } first && (first.Flags & needed) != 0;
+        var bad = firstIsFine ? address + (uint)bytes - 1 : address;
         var where = "0x" + bad.ToString("x8", CultureInfo.InvariantCulture);
-        var region = Containing(bad);
 
-        return (access, region) switch
+        return (access, Containing(bad)) switch
         {
             (Access.Write, { } found) => $"a store to {where}, which is in '{found.Name}' and cannot be written",
             (Access.Execute, { } found) => $"a jump to {where}, which is in '{found.Name}' and is not code",
@@ -83,23 +108,9 @@ public sealed class MemoryMap
         };
     }
 
-    private Region? Find(uint address, Access access)
-    {
-        var region = Containing(address);
-        return region is { } found && (found.Flags & Needed(access)) != 0 ? found : null;
-    }
-
     private Region? Containing(uint address)
     {
-        foreach (var region in _segments)
-        {
-            if (address - region.Start < region.Size)
-            {
-                return region;
-            }
-        }
-
-        foreach (var region in _open)
+        foreach (var region in _regions)
         {
             if (address - region.Start < region.Size)
             {
@@ -110,6 +121,38 @@ public sealed class MemoryMap
         return null;
     }
 
+    /// <summary>The parts of an open range that no segment occupies.</summary>
+    private static List<Region> Around(Region open, List<Region> segments)
+    {
+        var parts = new List<Region>();
+        ulong cursor = open.Start;
+        var end = (ulong)open.Start + open.Size;
+
+        foreach (var segment in segments.OrderBy(segment => segment.Start))
+        {
+            ulong start = segment.Start;
+            var stop = start + segment.Size;
+            if (stop <= cursor || start >= end)
+            {
+                continue;
+            }
+
+            if (start > cursor)
+            {
+                parts.Add(open with { Start = (uint)cursor, Size = (uint)(start - cursor) });
+            }
+
+            cursor = Math.Max(cursor, stop);
+        }
+
+        if (cursor < end)
+        {
+            parts.Add(open with { Start = (uint)cursor, Size = (uint)(end - cursor) });
+        }
+
+        return parts;
+    }
+
     private static SegmentFlags Needed(Access access) => access switch
     {
         Access.Write => SegmentFlags.Write,
@@ -117,5 +160,5 @@ public sealed class MemoryMap
         _ => SegmentFlags.Read,
     };
 
-    private readonly record struct Region(string Name, uint Start, uint Size, SegmentFlags Flags);
+    private sealed record Region(string Name, uint Start, uint Size, SegmentFlags Flags);
 }

@@ -13,11 +13,20 @@ public sealed class Memory
     private const int PageBits = 12;
     private const uint OffsetMask = PageSize - 1;
 
+    private const int CacheSlots = 16;
+
     private readonly Dictionary<uint, byte[]> _pages = [];
 
-    // Nearly every access is to the page of the one before it, so the last page found is kept.
-    private uint _lastIndex = uint.MaxValue;
-    private byte[]? _lastPage;
+    // A running program keeps going back to the same few pages: its code, its data, its stack.
+    // Remembering only the last one would be undone by every load, since the next fetch is from
+    // another page, so a handful are remembered, each in the slot its page number hashes to.
+    private readonly uint[] _cachedIndex = new uint[CacheSlots];
+    private readonly byte[]?[] _cachedPage = new byte[]?[CacheSlots];
+
+    public Memory()
+    {
+        Array.Fill(_cachedIndex, uint.MaxValue);
+    }
 
     /// <summary>How many pages have been written to.</summary>
     public int PageCount => _pages.Count;
@@ -138,12 +147,17 @@ public sealed class Memory
         return copy;
     }
 
+    // The usual bases (0x0000_0000, 0x1000_0000, 0x7fff_f000) differ only in their high bits,
+    // so those are folded in; otherwise code and data would share a slot and evict each other.
+    private static int Slot(uint index) => (int)((index ^ (index >> 8) ^ (index >> 16)) & (CacheSlots - 1));
+
     private byte[]? Page(uint address)
     {
         var index = address >> PageBits;
-        if (index == _lastIndex)
+        var slot = Slot(index);
+        if (_cachedIndex[slot] == index)
         {
-            return _lastPage;
+            return _cachedPage[slot];
         }
 
         if (!_pages.TryGetValue(index, out var page))
@@ -152,8 +166,8 @@ public sealed class Memory
             return null;
         }
 
-        _lastIndex = index;
-        _lastPage = page;
+        _cachedIndex[slot] = index;
+        _cachedPage[slot] = page;
         return page;
     }
 
@@ -167,8 +181,8 @@ public sealed class Memory
         var index = address >> PageBits;
         var page = new byte[PageSize];
         _pages[index] = page;
-        _lastIndex = index;
-        _lastPage = page;
+        _cachedIndex[Slot(index)] = index;
+        _cachedPage[Slot(index)] = page;
         return page;
     }
 }

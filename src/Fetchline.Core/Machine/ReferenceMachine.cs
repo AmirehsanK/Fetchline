@@ -79,7 +79,12 @@ public sealed class ReferenceMachine
         hart.Pc = commit.NextPc;
         hart.Cycle++;
         Stopped = commit.Stop;
-        _last = commit;
+        if (commit.Stop != StopReason.None)
+        {
+            // Only a stop is ever asked for again; keeping every record would cost a copy a step.
+            _last = commit;
+        }
+
         return commit;
     }
 
@@ -90,7 +95,7 @@ public sealed class ReferenceMachine
     /// </summary>
     public Commit Run(ulong maxInstructions = ulong.MaxValue)
     {
-        var commit = _last;
+        var commit = IsFinished ? _last : default;
         for (ulong i = 0; i < maxInstructions; i++)
         {
             commit = Step();
