@@ -311,7 +311,7 @@ assembling a disassembled random word gives the word back, and every error has a
 - [x] 2.3 The statement parser: labels, directives, operands
 - [x] 2.4 `Program`, sections, labels, constants and data directives
 - [x] 2.5 Encoding real instructions, with relocation operators
-- [ ] 2.6 Pseudo-instructions
+- [x] 2.6 Pseudo-instructions
 - [ ] 2.7 The source map and the listing
 - [ ] 2.8 The ELF32 writer and reader
 - [ ] 2.9 `fetchline asm` and `dis`, and the first examples

@@ -28,6 +28,7 @@ internal sealed partial class Assembly
     {
         var forms = new Dictionary<string, List<Form>>(StringComparer.Ordinal);
         AddRealForms(forms);
+        AddPseudoForms(forms);
         return forms.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray(), StringComparer.Ordinal);
     }
 
