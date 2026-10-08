@@ -68,14 +68,14 @@ public class RoundTripTests
             "nop", "li", "mv", "not", "neg", "seqz", "snez", "sltz", "sgtz",
             "beqz", "bnez", "bgez", "blez", "bltz", "bgtz",
             "j", "jal", "ret", "jr", "jalr",
-            "csrr", "csrw", "csrs", "csrc", "csrwi", "csrsi", "csrci", "fence",
+            "csrr", "csrw", "csrs", "csrc", "csrwi", "csrsi", "csrci", "fence", "unimp",
         ];
         uint[] words =
         [
             0x00000013, 0x00500513, 0x00058513, 0xFFF54513, 0x40B00533, 0x00153513, 0x00B03533, 0x0005A533, 0x00B02533,
             0x00050463, 0x00051463, 0x00055463, 0x00A05463, 0x00054463, 0x00A04463,
             0x0000006F, 0x008000EF, 0x00008067, 0x000F0067, 0x000500E7,
-            0x34202F73, 0x30529073, 0x3002A073, 0x3002B073, 0x74445073, 0x30046073, 0x30047073, 0x0FF0000F,
+            0x34202F73, 0x30529073, 0x3002A073, 0x3002B073, 0x74445073, 0x30046073, 0x30047073, 0x0FF0000F, 0xC0001073,
         ];
 
         var random = new SeededRandom(1);

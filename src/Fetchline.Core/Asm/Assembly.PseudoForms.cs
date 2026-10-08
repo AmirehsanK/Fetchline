@@ -20,6 +20,9 @@ internal sealed partial class Assembly
             Add(forms, usage.Split(' ')[0], new Form(usage, shape, 2, emit));
 
         One("nop", [], c => c.Emit(Op.Addi));
+
+        // An instruction that is guaranteed to trap, for marking code that must not be reached.
+        One("unimp", [], c => c.Emit(Op.Csrrw, Zero, Zero, 0, Csr.Cycle, c.StatementSpan));
         Add(forms, "li", new Form("li rd, imm", [K.Reg, K.Expr], 2, EmitLi, SizeLi));
 
         // Without position-independent code, "la" and "lla" are the same thing.

@@ -99,7 +99,7 @@ unchanged.
 - Directives: `.text .data .rodata .bss .section .globl .global .align .p2align .balign .byte
   .half .2byte .word .4byte .long .ascii .asciz .string .zero .space .equ .set`; `.option`,
   `.type`, `.size`, `.file`, `.attribute` and `.ident` are accepted and ignored.
-- The standard pseudo-instructions: `nop li la lla mv not neg seqz snez sltz sgtz beqz bnez blez
+- The standard pseudo-instructions: `nop unimp li la lla mv not neg seqz snez sltz sgtz beqz bnez blez
   bgez bltz bgtz bgt ble bgtu bleu j jal jr jalr ret call tail csrr csrw csrs csrc csrwi csrsi
   csrci rdcycle rdinstret rdcycleh rdinstreth` (`jal label` and `jalr rs` are the short forms).
 - **`li` has a fixed size by the end of pass 1.** If its value is known there: one `addi` when it
@@ -335,7 +335,7 @@ pass, with the `rv32mi` tests that fit a machine-mode core, and CI runs them.
 - [x] 4.1 The CSR file
 - [x] 4.2 Traps, `mret` and the bare environment
 - [x] 4.3 `tohost`, the conformance project and `fetchline test`
-- [ ] 4.4 The objdump cross-check of the decoder, disassembler and assembler
+- [x] 4.4 The objdump cross-check of the decoder, disassembler and assembler
 - [ ] 4.5 CI runs the official tests
 
 **M5. Pipeline with forwarding, load-use stall and EX branches; records; lockstep;

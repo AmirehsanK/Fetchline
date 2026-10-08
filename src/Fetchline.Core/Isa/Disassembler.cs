@@ -35,6 +35,9 @@ public readonly record struct DisassembledLine(string Mnemonic, string Operands)
 /// </summary>
 public static class Disassembler
 {
+    /// <summary><c>csrrw x0, cycle, x0</c>: what <c>unimp</c> assembles to.</summary>
+    public const uint Unimplemented = 0xC000_1073;
+
     /// <summary>Disassembles the word at <paramref name="pc"/>.</summary>
     public static DisassembledLine Disassemble(uint word, uint pc, DisassemblyOptions? options = null) =>
         Disassemble(Decoder.Decode(word), pc, options);
@@ -118,6 +121,9 @@ public static class Disassembler
             Op.Jalr when rd == 0 && imm == 0 => ("jr", Reg(rs1)),
             Op.Jalr when rd == 1 && imm == 0 => ("jalr", Reg(rs1)),
 
+            // Writing a read-only counter always traps, and this one encoding of it is the
+            // conventional way to mark code that must never be reached.
+            Op.Csrrw when i.Raw == Unimplemented => ("unimp", string.Empty),
             Op.Csrrs when rs1 == 0 => ("csrr", $"{Reg(rd)}, {Csr.Format(imm)}"),
             Op.Csrrw when rd == 0 => ("csrw", $"{Csr.Format(imm)}, {Reg(rs1)}"),
             Op.Csrrs when rd == 0 => ("csrs", $"{Csr.Format(imm)}, {Reg(rs1)}"),
