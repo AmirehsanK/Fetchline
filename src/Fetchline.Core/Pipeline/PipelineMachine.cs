@@ -41,11 +41,15 @@ public sealed class PipelineMachine
     // The events of the cycle being computed; null when not recording.
     private List<PipelineEvent>? _events;
 
+    private readonly BranchPredictor _predictor;
+
     public PipelineMachine(
         Program program, TextWriter? output = null, ExecutionEnvironment? environment = null, PipelineConfig? config = null)
     {
         Hart = new Hart(program, output, environment);
         Config = config ?? PipelineConfig.Default;
+        Config.Validate();
+        _predictor = new BranchPredictor(Config);
         _pc = Hart.Pc;
     }
 
@@ -81,6 +85,10 @@ public sealed class PipelineMachine
         var x = hart.X;
         var fetchingAllowed = !_halting;
         _events = Recording ? [] : null;
+
+        // How the one branch decided this cycle came out, if one was. The predictor learns of it
+        // at the clock edge, like any other state, so a lookup in this same cycle does not see it.
+        (uint Pc, bool Taken, uint Target)? outcome = null;
         Stopped = StopReason.None;      // a pause at an ebreak ends when the machine is stepped again
 
         // ---- WB: the result is written to its register -------------------------------------
@@ -186,21 +194,30 @@ public sealed class PipelineMachine
             var taken = decided ? _idEx.Taken : Exec.Taken(control.Branch, rs1, rs2);
             var target = decided ? _idEx.Target : Exec.Target(control.Branch, _idEx.Pc, instruction.Imm, alu);
 
-            if (!decided)
+            if (Config.Branches == BranchDecision.Execute)
             {
-                // Fetch has carried on in a straight line behind this instruction. If it goes
-                // somewhere else, the two instructions fetched since are from the wrong path.
-                if (taken)
+                // Fetch went on behind this instruction to wherever it was predicted to lead. If
+                // that is not where it really leads, the two instructions fetched since are from
+                // the wrong path. This is asked of every instruction, not only of branches: a
+                // stale entry in the branch target buffer can send fetch off after anything.
+                var next = taken ? target : _idEx.Pc + 4;
+                var mispredicted = next != _idEx.PredictedNext;
+                if (mispredicted)
                 {
                     redirect = true;
-                    redirectTo = target;
+                    redirectTo = next;
                     redirectBy = _idEx.Seq;
                     flushCause = FlushCause.Branch;
                 }
 
+                if (control.IsControlFlow || mispredicted)
+                {
+                    _events?.Add(new BranchEvent(_idEx.Seq, taken, target, mispredicted, Stage.Execute));
+                }
+
                 if (control.IsControlFlow)
                 {
-                    _events?.Add(new BranchEvent(_idEx.Seq, taken, target, Mispredicted: taken, Stage.Execute));
+                    outcome = (_idEx.Pc, taken, target);
                 }
             }
 
@@ -247,15 +264,28 @@ public sealed class PipelineMachine
                 var taken = Exec.Taken(control.Branch, a, b);
                 var target = Exec.Target(control.Branch, _ifId.Pc, instruction.Imm, sum);
 
-                decodeRedirect = taken;
-                decodeTarget = target;
-                _events?.Add(new BranchEvent(_ifId.Seq, taken, target, Mispredicted: taken, Stage.Decode));
-                nextIdEx = new IdEx(true, _ifId.Seq, _ifId.Pc, instruction, a, b, Decided: true, taken, target);
+                var next = taken ? target : _ifId.Pc + 4;
+                decodeRedirect = next != _ifId.PredictedNext;
+                decodeTarget = next;
+                outcome = (_ifId.Pc, taken, target);
+                _events?.Add(new BranchEvent(_ifId.Seq, taken, target, decodeRedirect, Stage.Decode));
+                nextIdEx = new IdEx(
+                    true, _ifId.Seq, _ifId.Pc, instruction, a, b, _ifId.PredictedNext, Decided: true, taken, target);
+            }
+            else if (!redirect && Config.Branches == BranchDecision.Decode && _ifId.PredictedNext != _ifId.Pc + 4)
+            {
+                // Fetch followed a prediction from something that turns out not to be a branch:
+                // a stale entry in the branch target buffer. It is put right here, where a
+                // branch would have been decided.
+                decodeRedirect = true;
+                decodeTarget = _ifId.Pc + 4;
+                _events?.Add(new BranchEvent(_ifId.Seq, Taken: false, decodeTarget, Mispredicted: true, Stage.Decode));
             }
 
             if (!stall && !nextIdEx.Valid)
             {
-                nextIdEx = new IdEx(true, _ifId.Seq, _ifId.Pc, instruction, x[instruction.Rs1], x[instruction.Rs2]);
+                nextIdEx = new IdEx(
+                    true, _ifId.Seq, _ifId.Pc, instruction, x[instruction.Rs1], x[instruction.Rs2], _ifId.PredictedNext);
             }
 
             decodeView = new StageView(stall ? Occupancy.Held : Occupancy.Normal, _ifId.Seq, _ifId.Pc, _ifId.Raw);
@@ -267,7 +297,8 @@ public sealed class PipelineMachine
         {
             if (hart.TryFetch(_pc, out var word, out var stop))
             {
-                fetching = new IfId(true, _nextSeq++, _pc, word);
+                // Where to fetch from next is guessed now, from the address and the word alone.
+                fetching = new IfId(true, _nextSeq++, _pc, word, _predictor.Predict(_pc, word));
             }
             else
             {
@@ -326,7 +357,7 @@ public sealed class PipelineMachine
                 fetchView = new StageView(stall ? Occupancy.Held : Occupancy.Normal, fetching.Seq, fetching.Pc, fetching.Raw);
                 if (!stall)
                 {
-                    _pc = fetching.Pc + 4;
+                    _pc = fetching.PredictedNext;
                 }
             }
         }
@@ -336,6 +367,10 @@ public sealed class PipelineMachine
         _exMem = nextExMem;
         _idEx = nextIdEx;
         _ifId = nextIfId;
+        if (outcome is { } decidedBranch)
+        {
+            _predictor.Update(decidedBranch.Pc, decidedBranch.Taken, decidedBranch.Target);
+        }
 
         // A run that reaches the end of its code is over when the last instruction has left WB.
         Commit? end = null;
@@ -530,11 +565,12 @@ public sealed class PipelineMachine
     // The four latches. Each carries the sequence number given at fetch, so that one instruction
     // can be followed from stage to stage, and the address and word that identify it.
 
-    private readonly record struct IfId(bool Valid, ulong Seq, uint Pc, uint Raw);
+    /// <param name="PredictedNext">Where fetch went after this instruction, on the predictor's word.</param>
+    private readonly record struct IfId(bool Valid, ulong Seq, uint Pc, uint Raw, uint PredictedNext);
 
     /// <param name="Decided">The branch was decided in ID; its outcome and target travel with it.</param>
     private readonly record struct IdEx(
-        bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2,
+        bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2, uint PredictedNext,
         bool Decided = false, bool Taken = false, uint Target = 0);
 
     private readonly record struct ExMem(

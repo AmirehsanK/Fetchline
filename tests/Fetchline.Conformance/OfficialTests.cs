@@ -88,7 +88,11 @@ public class OfficialTests
             instructions += CountOnTheReferenceMachine(name);
         }
 
-        Assert.Equal((19_982ul, 26_581ul), (instructions, cycles));
+        // 26,581 until the predictors arrived. With them, a guess is wrong only when fetch went
+        // somewhere other than where the instruction leads; three jumps in the suite go to the
+        // very next instruction, which is where fetch was going anyway, and no longer cost two
+        // cycles each.
+        Assert.Equal((19_982ul, 26_575ul), (instructions, cycles));
     }
 
     private static ulong CountOnTheReferenceMachine(string name)

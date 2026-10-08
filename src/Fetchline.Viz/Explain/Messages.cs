@@ -36,6 +36,9 @@ public interface IMessages
     /// <summary>A branch or jump was taken and what fetch had brought in behind it is thrown away.</summary>
     string TakenBranch(string branch, string stage, string target, int squashed);
 
+    /// <summary>Fetch had been sent after a branch that, when decided, was not taken.</summary>
+    string NotTakenBranch(string branch, string stage, int squashed);
+
     /// <summary>A system instruction took effect and what is behind it is fetched again.</summary>
     string SystemFlush(string instruction, int squashed);
 
@@ -105,6 +108,9 @@ public sealed class EnglishMessages : IMessages
 
     public string TakenBranch(string branch, string stage, string target, int squashed) =>
         $"{branch} ({stage}) is taken to {target}; {Count(squashed, "instruction")} behind it {(squashed == 1 ? "is" : "are")} squashed";
+
+    public string NotTakenBranch(string branch, string stage, int squashed) =>
+        $"{branch} ({stage}) is not taken, but was predicted taken; {Count(squashed, "instruction")} behind it {(squashed == 1 ? "is" : "are")} squashed";
 
     public string SystemFlush(string instruction, int squashed) =>
         $"{instruction} (MEM) is a system instruction; {Count(squashed, "instruction")} behind it {(squashed == 1 ? "is" : "are")} fetched again";

@@ -234,7 +234,7 @@ How it was checked:
   same number every time, and the number for `examples/load-use.s` is pinned. Replaying a program
   to a cycle gives the state, the events and the commit that were there the first time, which is
   what makes stepping back a replay.
-- **Timing over the whole suite.** The 66 official tests complete 19,982 instructions in 26,581
+- **Timing over the whole suite.** The 66 official tests complete 19,982 instructions in 26,575
   cycles on the pipeline, a CPI of 1.33. A test program cannot check its own timing, so those two
   numbers are pinned by a test.
 

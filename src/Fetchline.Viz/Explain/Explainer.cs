@@ -100,6 +100,8 @@ public sealed class Explainer(StaircaseLayout layout, InstructionLabels labels, 
             var decided = record.Events.OfType<BranchEvent>().FirstOrDefault(branch => branch.Seq == by);
             var text = flushes[0].Cause switch
             {
+                FlushCause.Branch when decided is { Taken: false } => Messages.NotTakenBranch(
+                    Name(by), Export.AsciiTrace.Name(decided.ResolvedIn), flushes.Count),
                 FlushCause.Branch => Messages.TakenBranch(
                     Name(by),
                     Export.AsciiTrace.Name(decided?.ResolvedIn ?? Stage.Execute),

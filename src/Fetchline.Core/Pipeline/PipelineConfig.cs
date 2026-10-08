@@ -41,6 +41,28 @@ public enum BranchDecision : byte
     Decode,
 }
 
+/// <summary>How fetch guesses where to go after a branch, before the branch is decided.</summary>
+public enum Predictor : byte
+{
+    /// <summary>Always straight on. Every taken branch and every jump is a wrong guess.</summary>
+    NotTaken,
+
+    /// <summary>
+    /// A fixed rule read off the instruction: a conditional branch backwards is taken, one
+    /// forwards is not, and a <c>jal</c> goes where it says.
+    /// </summary>
+    BackwardTaken,
+
+    /// <summary>A branch target buffer whose entries expect a branch to do what it did last time.</summary>
+    OneBit,
+
+    /// <summary>
+    /// A branch target buffer with a two-bit saturating counter in each entry, which takes two
+    /// wrong guesses in a row to change its mind.
+    /// </summary>
+    TwoBit,
+}
+
 /// <summary>
 /// How the pipeline is built: the what-if switches. Two pipelines with different configurations
 /// run the same program to the same result, in different numbers of cycles.
@@ -53,6 +75,24 @@ public sealed record PipelineConfig
     public HazardHandling Hazards { get; init; } = HazardHandling.Forwarding;
 
     public BranchDecision Branches { get; init; } = BranchDecision.Execute;
+
+    public Predictor Predictor { get; init; } = Predictor.NotTaken;
+
+    /// <summary>
+    /// How many entries the branch target buffer of a one-bit or two-bit predictor has: a power
+    /// of two. The playground offers 16, 64 and 256.
+    /// </summary>
+    public int BtbEntries { get; init; } = 64;
+
+    /// <summary>Throws if the switches cannot be built: a buffer size that is not a power of two.</summary>
+    public void Validate()
+    {
+        if (BtbEntries is < 1 or > 65536 || (BtbEntries & (BtbEntries - 1)) != 0)
+        {
+            throw new ArgumentException(
+                $"A branch target buffer has a power-of-two number of entries up to 65536, not {BtbEntries}.");
+        }
+    }
 
     /// <summary>
     /// Whether a pipeline built this way computes what the program says. The one that does not
