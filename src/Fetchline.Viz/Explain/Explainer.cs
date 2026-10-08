@@ -51,6 +51,15 @@ public sealed class Explainer(StaircaseLayout layout, InstructionLabels labels, 
                         stall.Seq, stall.Producer));
                     break;
 
+                case StallEvent { Cause: StallCause.DataHazard } stall:
+                    lines.Add(new LogLine(
+                        record.Cycle, LogKind.Stall,
+                        Messages.DataHazard(
+                            Name(stall.Seq), labels.Register(stall.Register), Name(stall.Producer),
+                            Export.AsciiTrace.Name(stall.ProducerStage)),
+                        stall.Seq, stall.Producer));
+                    break;
+
                 case ForwardEvent forward:
                     lines.Add(new LogLine(
                         record.Cycle, LogKind.Forward,

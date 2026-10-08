@@ -41,11 +41,16 @@ public sealed class PipelineMachine
     // The events of the cycle being computed; null when not recording.
     private List<PipelineEvent>? _events;
 
-    public PipelineMachine(Program program, TextWriter? output = null, ExecutionEnvironment? environment = null)
+    public PipelineMachine(
+        Program program, TextWriter? output = null, ExecutionEnvironment? environment = null, PipelineConfig? config = null)
     {
         Hart = new Hart(program, output, environment);
+        Config = config ?? PipelineConfig.Default;
         _pc = Hart.Pc;
     }
+
+    /// <summary>How this pipeline is built.</summary>
+    public PipelineConfig Config { get; }
 
     /// <summary>The registers, memory and surroundings. Its program counter is not the pipeline's.</summary>
     public Hart Hart { get; }
@@ -203,21 +208,13 @@ public sealed class PipelineMachine
             var instruction = Decoder.Decode(_ifId.Raw);
             var control = instruction.Control;
 
-            // The load-use hazard. The instruction ahead, now in EX, is a load: its value will
-            // not exist until the end of MEM, one cycle too late for this instruction to take it
-            // into EX next cycle. Forwarding cannot reach back in time, so this instruction waits
-            // here for a cycle, a bubble goes into EX in its place, and then MEM/WB can forward.
-            var ahead = _idEx.Instruction;
-            if (!redirect && _idEx.Valid && ahead.Control.Mem == MemOp.Load && ahead.Rd != 0)
+            // A dependency counts only if the instruction really reads the register.
+            var rs1 = control.UsesRs1 ? instruction.Rs1 : 0;
+            var rs2 = control.UsesRs2 ? instruction.Rs2 : 0;
+            if (!redirect && WaitsFor(rs1, rs2) is { } wait)
             {
-                // A dependency counts only if the instruction really reads the register.
-                var needsRs1 = control.UsesRs1 && instruction.Rs1 == ahead.Rd;
-                var needsRs2 = control.UsesRs2 && instruction.Rs2 == ahead.Rd;
-                if (needsRs1 || needsRs2)
-                {
-                    stall = true;
-                    _events?.Add(new StallEvent(_ifId.Seq, StallCause.LoadUse, Stage.Decode, ahead.Rd, _idEx.Seq));
-                }
+                stall = true;
+                _events?.Add(new StallEvent(_ifId.Seq, wait.Cause, Stage.Decode, wait.Register, wait.Producer, wait.ProducerStage));
             }
 
             if (!stall)
@@ -345,7 +342,7 @@ public sealed class PipelineMachine
     /// </param>
     private uint Forward(Operand operand, int register, bool used, uint fromDecode)
     {
-        if (!used || register == 0)
+        if (!used || register == 0 || Config.Hazards != HazardHandling.Forwarding)
         {
             return fromDecode;
         }
@@ -379,6 +376,39 @@ public sealed class PipelineMachine
         }
 
         return fromDecode;
+    }
+
+    /// <summary>
+    /// The hazard unit, for the instruction in ID: whether it must wait a cycle, and for what.
+    /// The registers are the ones it really reads; zero stands for "none".
+    /// </summary>
+    private (StallCause Cause, byte Register, ulong Producer, Stage ProducerStage)? WaitsFor(int rs1, int rs2)
+    {
+        var inExecute = _idEx.Valid && _idEx.Instruction.Control.WritesRd ? _idEx.Instruction.Rd : (byte)0;
+        var inMemory = _exMem.Valid && _exMem.Instruction.Control.WritesRd ? _exMem.Instruction.Rd : (byte)0;
+
+        bool Needs(byte register) => register != 0 && (register == rs1 || register == rs2);
+
+        if (Config.Hazards == HazardHandling.Forwarding)
+        {
+            // The load-use hazard. The instruction ahead, now in EX, is a load: its value will
+            // not exist until the end of MEM, one cycle too late for this instruction to take it
+            // into EX next cycle. Forwarding cannot reach back in time, so this instruction waits
+            // here for a cycle, a bubble goes into EX in its place, and then MEM/WB can forward.
+            return _idEx.Instruction.Control.Mem == MemOp.Load && Needs(inExecute)
+                ? (StallCause.LoadUse, inExecute, _idEx.Seq, Stage.Execute)
+                : null;
+        }
+
+        // With no forwarding paths the only way to a value is the register file, so this
+        // instruction waits until the one that produces it is in WB, where a write is read in
+        // the same cycle. The nearer producer is the one to wait for: it is the newer value.
+        if (Needs(inExecute))
+        {
+            return (StallCause.DataHazard, inExecute, _idEx.Seq, Stage.Execute);
+        }
+
+        return Needs(inMemory) ? (StallCause.DataHazard, inMemory, _exMem.Seq, Stage.Memory) : null;
     }
 
     // The four latches. Each carries the sequence number given at fetch, so that one instruction

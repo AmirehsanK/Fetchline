@@ -357,7 +357,7 @@ official tests.
 `fetchline compare`.** Done when the official tests and 2,000 random programs pass lockstep in
 every correct configuration, and "off" reports its first wrong value.
 
-- [ ] 6.1 Stall-only hazard handling
+- [x] 6.1 Stall-only hazard handling
 - [ ] 6.2 Hazard handling off, and the first-wrong-value report
 - [ ] 6.3 Branches decided in ID
 - [ ] 6.4 Static and dynamic predictors with a BTB

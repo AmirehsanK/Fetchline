@@ -26,6 +26,12 @@ public enum StallCause : byte
 {
     /// <summary>The instruction needs a value that the load ahead of it has not read yet.</summary>
     LoadUse,
+
+    /// <summary>
+    /// With no forwarding, the instruction needs a value that is not in the register file yet,
+    /// and waits until the instruction producing it reaches WB.
+    /// </summary>
+    DataHazard,
 }
 
 public enum FlushCause : byte
@@ -79,7 +85,9 @@ public sealed record ForwardEvent(ulong Seq, ForwardSource From, Operand Operand
 /// <param name="Stage">Where it waits.</param>
 /// <param name="Register">The register it is waiting for.</param>
 /// <param name="Producer">The instruction that will produce it.</param>
-public sealed record StallEvent(ulong Seq, StallCause Cause, Stage Stage, byte Register, ulong Producer)
+/// <param name="ProducerStage">The stage that instruction is in while this one waits.</param>
+public sealed record StallEvent(
+    ulong Seq, StallCause Cause, Stage Stage, byte Register, ulong Producer, Stage ProducerStage = Stage.Execute)
     : PipelineEvent(Seq)
 {
     public override void AddTo(ref TraceHash hash)
@@ -90,6 +98,7 @@ public sealed record StallEvent(ulong Seq, StallCause Cause, Stage Stage, byte R
         hash.Add((byte)Stage);
         hash.Add(Register);
         hash.Add(Producer);
+        hash.Add((byte)ProducerStage);
     }
 }
 

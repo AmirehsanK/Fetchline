@@ -24,6 +24,9 @@ public interface IMessages
     /// <summary>The consumer is held in ID because the load ahead of it has not read its value yet.</summary>
     string LoadUse(string consumer, string register, string producer);
 
+    /// <summary>With no forwarding, the consumer is held in ID until its producer reaches WB.</summary>
+    string DataHazard(string consumer, string register, string producer, string producerStage);
+
     /// <summary>An operand was taken from a latch: <c>MEM/WB -> EX.A   x4 from lw</c>.</summary>
     string Forwarded(string latch, string operand, string register, string producer);
 
@@ -63,6 +66,9 @@ public sealed class EnglishMessages : IMessages
 
     public string LoadUse(string consumer, string register, string producer) =>
         $"load-use: {consumer} (ID) needs {register}; {producer} (EX) has it only after MEM";
+
+    public string DataHazard(string consumer, string register, string producer, string producerStage) =>
+        $"no forwarding: {consumer} (ID) waits for {register} until {producer} ({producerStage}) reaches WB";
 
     public string Forwarded(string latch, string operand, string register, string producer) =>
         $"{latch} -> EX.{operand}   {register} from {producer}";

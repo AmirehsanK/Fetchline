@@ -63,9 +63,10 @@ public sealed record Divergence(ulong Index, ulong Cycle, Commit Pipeline, Commi
 /// </summary>
 public sealed class Lockstep
 {
-    public Lockstep(Program program, TextWriter? output = null, ExecutionEnvironment? environment = null)
+    public Lockstep(
+        Program program, TextWriter? output = null, ExecutionEnvironment? environment = null, PipelineConfig? config = null)
     {
-        Pipeline = new PipelineMachine(program, output, environment);
+        Pipeline = new PipelineMachine(program, output, environment, config);
 
         // The reference machine runs the same system calls; what it prints is not wanted twice.
         Reference = new ReferenceMachine(program, TextWriter.Null, environment);
