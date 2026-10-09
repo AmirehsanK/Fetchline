@@ -298,7 +298,9 @@ public sealed class PersianMessages : IMessages
         StallCause.LoadUse => "بار و مصرف",
         StallCause.DataHazard => "بدون پیش‌فرست",
         StallCause.BranchOperand => "انشعاب در ID",
-        _ => "چندچرخه‌ای",
+        StallCause.MultiCycle => "چندچرخه‌ای",
+        StallCause.InstructionCacheMiss => "فقدان در حافظه‌ی نهان دستور",
+        _ => "فقدان در حافظه‌ی نهان داده",
     };
 
     public string NameOf(FlushCause cause) => cause switch

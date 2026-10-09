@@ -44,6 +44,18 @@ public enum StallCause : byte
     /// them all. It waits for nothing but itself; what is behind it waits for it.
     /// </summary>
     MultiCycle,
+
+    /// <summary>
+    /// The instruction in IF is not in the instruction cache, and waits there for its block.
+    /// Nothing else waits: bubbles go on to ID in its place.
+    /// </summary>
+    InstructionCacheMiss,
+
+    /// <summary>
+    /// The instruction in MEM reads or writes a block that is not in the data cache. It waits
+    /// there for the block, and everything behind it waits for it.
+    /// </summary>
+    DataCacheMiss,
 }
 
 public enum FlushCause : byte
@@ -223,5 +235,42 @@ public sealed record TrapEvent(ulong Seq, uint Cause, uint Value, uint Handler) 
         hash.Add(Cause);
         hash.Add(Value);
         hash.Add(Handler);
+    }
+}
+
+/// <summary>Which of the two caches.</summary>
+public enum CacheKind : byte
+{
+    /// <summary>The one in front of IF.</summary>
+    Instruction,
+
+    /// <summary>The one in front of MEM.</summary>
+    Data,
+}
+
+/// <summary>
+/// A cache was asked for an address: by IF for an instruction, or by MEM for a load or a store.
+/// There is one for every access, hit or miss, so that what a cache holds can be worked out
+/// from the records like everything else.
+/// </summary>
+/// <param name="Seq">The instruction that asked.</param>
+/// <param name="Way">The way the block was found in, or was brought into.</param>
+/// <param name="Evicted">A block was put out to make room, and <paramref name="EvictedTag"/> is its tag.</param>
+public sealed record CacheEvent(
+    ulong Seq, CacheKind Kind, uint Address, bool Hit, int Set, int Way, uint Tag, bool Evicted, uint EvictedTag)
+    : PipelineEvent(Seq)
+{
+    public override void AddTo(ref TraceHash hash)
+    {
+        hash.Add((byte)10);
+        hash.Add(Seq);
+        hash.Add((byte)Kind);
+        hash.Add(Address);
+        hash.Add(Hit);
+        hash.Add((uint)Set);
+        hash.Add((uint)Way);
+        hash.Add(Tag);
+        hash.Add(Evicted);
+        hash.Add(EvictedTag);
     }
 }

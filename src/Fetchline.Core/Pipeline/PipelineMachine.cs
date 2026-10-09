@@ -43,6 +43,16 @@ public sealed class PipelineMachine
 
     private readonly BranchPredictor _predictor;
 
+    // The caches, when the pipeline has them. They say how long a read takes and nothing about
+    // what is read: the data is in the hart's memory either way.
+    private readonly Cache? _instructionCache;
+    private readonly Cache? _dataCache;
+
+    // How many more cycles the instruction in IF has to wait for its block, and whether it has
+    // waited at all: one that has is given its prediction when it arrives, not when it was asked for.
+    private int _fetchWait;
+    private bool _fetchWaited;
+
     public PipelineMachine(
         Program program, TextWriter? output = null, ExecutionEnvironment? environment = null, PipelineConfig? config = null)
     {
@@ -50,6 +60,8 @@ public sealed class PipelineMachine
         Config = config ?? PipelineConfig.Default;
         Config.Validate();
         _predictor = new BranchPredictor(Config);
+        _instructionCache = Config.InstructionCache is { } instructions ? new Cache(instructions) : null;
+        _dataCache = Config.DataCache is { } data ? new Cache(data) : null;
         _pc = Hart.Pc;
     }
 
@@ -124,7 +136,29 @@ public sealed class PipelineMachine
         var flush = false;
         var flushCause = FlushCause.System;
         ulong redirectBy = 0;
-        if (_exMem.Valid)
+        var stillInMemory = default(ExMem);
+        if (_exMem.Valid && _dataCache is { } dataCache && _exMem.Instruction.Control.Mem != MemOp.None && !_exMem.Looked)
+        {
+            // The address is looked up as the instruction arrives, before anything knows whether
+            // the access is one the machine allows: a miss and a fault are found side by side.
+            var access = dataCache.Access(_exMem.Alu);
+            _events?.Add(new CacheEvent(
+                _exMem.Seq, CacheKind.Data, _exMem.Alu, access.Hit, access.Set, access.Way, access.Tag, access.Evicted, access.EvictedTag));
+            _exMem = _exMem with { Looked = true, Wait = access.Hit ? 0 : dataCache.Config.MissPenalty };
+        }
+
+        if (_exMem.Valid && _exMem.Wait > 0)
+        {
+            // The block is on its way. The instruction keeps MEM, a bubble goes on to WB in its
+            // place, and everything behind it waits. Nothing has happened yet: this is the
+            // commit point, and it is reached once, when the wait is over.
+            stillInMemory = _exMem with { Wait = _exMem.Wait - 1 };
+            memoryView = new StageView(Occupancy.Held, _exMem.Seq, _exMem.Pc, _exMem.Instruction.Raw);
+            wires = wires with { MemoryAlu = _exMem.Alu, MemoryRs2 = _exMem.Rs2 };
+            _events?.Add(new StallEvent(
+                _exMem.Seq, StallCause.DataCacheMiss, Stage.Memory, Register: 0, Producer: 0, Remaining: (byte)stillInMemory.Wait));
+        }
+        else if (_exMem.Valid)
         {
             var control = _exMem.Instruction.Control;
             var commit = hart.Complete(
@@ -178,6 +212,30 @@ public sealed class PipelineMachine
         {
             executeView = new StageView(Occupancy.Squashed, _idEx.Seq, _idEx.Pc, _idEx.Instruction.Raw);
             _events?.Add(new FlushEvent(_idEx.Seq, flushCause, Stage.Execute, redirectBy));
+        }
+        else if (_idEx.Valid && stillInMemory.Valid)
+        {
+            // MEM is waiting, so EX keeps its instruction and does nothing with it yet, except
+            // this: it takes its forwarded operands now. The instruction in WB that one of them
+            // may come from will be gone long before EX is let go, and what ID read is too old.
+            var instruction = _idEx.Instruction;
+            var control = instruction.Control;
+            var (rs1, rs2) = (_idEx.Rs1, _idEx.Rs2);
+            if (!_idEx.Decided && _idEx.Spent == 0)
+            {
+                rs1 = Forward(Operand.A, instruction.Rs1, control.UsesRs1, rs1);
+                rs2 = Forward(Operand.B, instruction.Rs2, control.UsesRs2, rs2);
+            }
+
+            stillExecuting = _idEx with { Rs1 = rs1, Rs2 = rs2 };
+            executeView = new StageView(Occupancy.Held, _idEx.Seq, _idEx.Pc, instruction.Raw);
+            wires = wires with
+            {
+                ExecuteRs1 = rs1,
+                ExecuteRs2 = rs2,
+                AluA = Exec.OperandA(control.SrcA, rs1, _idEx.Pc),
+                AluB = Exec.OperandB(control.SrcB, rs2, instruction.Imm),
+            };
         }
         else if (_idEx.Valid)
         {
@@ -259,12 +317,13 @@ public sealed class PipelineMachine
         // WB has already written this cycle, so a value written now is the value read now.
         var nextIdEx = default(IdEx);
         var decodeView = default(StageView);
-        var stall = stillExecuting.Valid;
+        var stall = stillExecuting.Valid || stillInMemory.Valid;
         var decodeRedirect = false;
         uint decodeTarget = 0;
-        if (stillExecuting.Valid)
+        if (stall)
         {
-            // EX is keeping its instruction, so ID keeps its own and does nothing with it yet.
+            // EX is keeping its instruction, or MEM is and EX has none: either way ID keeps its
+            // own and does nothing with it yet.
             nextIdEx = stillExecuting;
             if (_ifId.Valid)
             {
@@ -343,6 +402,15 @@ public sealed class PipelineMachine
             {
                 // Where to fetch from next is guessed now, from the address and the word alone.
                 fetching = new IfId(true, _nextSeq++, _pc, word, _predictor.Predict(_pc, word));
+                if (_instructionCache is { } instructionCache)
+                {
+                    var access = instructionCache.Access(_pc);
+                    _events?.Add(new CacheEvent(
+                        fetching.Seq, CacheKind.Instruction, _pc, access.Hit, access.Set, access.Way, access.Tag, access.Evicted,
+                        access.EvictedTag));
+                    _fetchWait = access.Hit ? 0 : instructionCache.Config.MissPenalty;
+                    _fetchWaited = !access.Hit;
+                }
             }
             else
             {
@@ -362,6 +430,7 @@ public sealed class PipelineMachine
             nextIdEx = default;
             nextIfId = default;
             _heldFetch = default;
+            (_fetchWait, _fetchWaited) = (0, false);
             _pendingEnd = null;
             _pc = redirectTo;
             nextPcFrom = flush ? NextPcFrom.Memory : NextPcFrom.Execute;
@@ -384,6 +453,7 @@ public sealed class PipelineMachine
             // fetched behind it is from the wrong path.
             nextIfId = default;
             _heldFetch = default;
+            (_fetchWait, _fetchWaited) = (0, false);
             _pendingEnd = null;
             _pc = decodeTarget;
             nextPcFrom = NextPcFrom.Decode;
@@ -394,8 +464,28 @@ public sealed class PipelineMachine
                 _events?.Add(new FlushEvent(fetching.Seq, FlushCause.Branch, Stage.Fetch, _ifId.Seq));
             }
         }
+        else if (fetching.Valid && _fetchWait > 0)
+        {
+            // The instruction's block is on its way. It keeps IF and nothing goes on to ID in
+            // its place, but nothing else waits for it: what is ahead of it carries on. The
+            // wait goes on through a stall, since memory does not know there is one.
+            _fetchWait--;
+            nextIfId = stall ? _ifId : default;
+            _heldFetch = fetching;
+            fetchView = new StageView(Occupancy.Held, fetching.Seq, fetching.Pc, fetching.Raw);
+            _events?.Add(new StallEvent(
+                fetching.Seq, StallCause.InstructionCacheMiss, Stage.Fetch, Register: 0, Producer: 0, Remaining: (byte)_fetchWait));
+        }
         else
         {
+            // Where fetch goes next is guessed when the word arrives, so an instruction that
+            // waited for its block is given the guess the predictor makes now.
+            if (fetching.Valid && _fetchWaited && !stall)
+            {
+                fetching = fetching with { PredictedNext = _predictor.Predict(fetching.Pc, fetching.Raw) };
+                _fetchWaited = false;
+            }
+
             // A stall in ID holds everything behind it: IF/ID keeps its instruction, and so does IF.
             nextIfId = stall ? _ifId : fetching;
             _heldFetch = stall ? fetching : default;
@@ -412,7 +502,7 @@ public sealed class PipelineMachine
 
         // ---- The clock edge: every latch takes its new value at once ----------------------------
         _memWb = nextMemWb;
-        _exMem = nextExMem;
+        _exMem = stillInMemory.Valid ? stillInMemory : nextExMem;
         _idEx = nextIdEx;
         _ifId = nextIfId;
         if (outcome is { } decidedBranch)
@@ -628,8 +718,11 @@ public sealed class PipelineMachine
         bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2, uint PredictedNext,
         bool Decided = false, bool Taken = false, uint Target = 0, int Spent = 0);
 
+    /// <param name="Looked">The data cache has been asked for the instruction's address.</param>
+    /// <param name="Wait">How many more cycles it has to wait in MEM for its block.</param>
     private readonly record struct ExMem(
-        bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2, uint Alu, bool Taken, uint Target);
+        bool Valid, ulong Seq, uint Pc, Instruction Instruction, uint Rs1, uint Rs2, uint Alu, bool Taken, uint Target,
+        bool Looked = false, int Wait = 0);
 
     private readonly record struct MemWb(bool Valid, ulong Seq, Commit Commit);
 }

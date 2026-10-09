@@ -633,7 +633,9 @@ public sealed class EnglishMessages : IMessages
         StallCause.LoadUse => "load-use",
         StallCause.DataHazard => "no forwarding",
         StallCause.BranchOperand => "branch in ID",
-        _ => "multi-cycle",
+        StallCause.MultiCycle => "multi-cycle",
+        StallCause.InstructionCacheMiss => "instruction cache miss",
+        _ => "data cache miss",
     };
 
     public string NameOf(FlushCause cause) => cause switch

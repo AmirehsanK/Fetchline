@@ -96,6 +96,14 @@ public sealed record PipelineConfig
     public int MulDivCycles { get; init; } = 1;
 
     /// <summary>
+    /// The cache in front of IF, or null for a pipeline that reads any instruction in a cycle.
+    /// </summary>
+    public CacheConfig? InstructionCache { get; init; }
+
+    /// <summary>The cache in front of MEM, or null for one that reads any data in a cycle.</summary>
+    public CacheConfig? DataCache { get; init; }
+
+    /// <summary>
     /// Throws if the switches cannot be built: a buffer size that is not a power of two, or a
     /// multiplier that takes no time at all.
     /// </summary>
@@ -112,6 +120,9 @@ public sealed record PipelineConfig
             throw new ArgumentException(
                 $"A multiply or divide takes from 1 to {MaxMulDivCycles} cycles, not {MulDivCycles}.");
         }
+
+        InstructionCache?.Validate();
+        DataCache?.Validate();
     }
 
     /// <summary>

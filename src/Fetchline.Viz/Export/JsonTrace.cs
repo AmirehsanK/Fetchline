@@ -41,6 +41,8 @@ public static class JsonTrace
             json.WriteString("predictor", SwitchNames.Of(config.Predictor));
             json.WriteNumber("btb", config.BtbEntries);
             json.WriteNumber("muldiv", config.MulDivCycles);
+            Cache(json, "icache", config.InstructionCache);
+            Cache(json, "dcache", config.DataCache);
             json.WriteEndObject();
 
             var stats = PipelineStats.Of(records);
@@ -66,6 +68,22 @@ public static class JsonTrace
         }
 
         return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length) + "\n";
+    }
+
+    private static void Cache(Utf8JsonWriter json, string name, CacheConfig? cache)
+    {
+        if (cache is null)
+        {
+            json.WriteNull(name);
+            return;
+        }
+
+        json.WriteStartObject(name);
+        json.WriteNumber("sets", cache.Sets);
+        json.WriteNumber("ways", cache.Ways);
+        json.WriteNumber("blockBytes", cache.BlockBytes);
+        json.WriteNumber("missPenalty", cache.MissPenalty);
+        json.WriteEndObject();
     }
 
     private static void Cycle(Utf8JsonWriter json, CycleRecord record, InstructionLabels labels)
@@ -171,7 +189,9 @@ public static class JsonTrace
                     StallCause.LoadUse => "load-use",
                     StallCause.DataHazard => "data-hazard",
                     StallCause.BranchOperand => "branch-operand",
-                    _ => "multi-cycle",
+                    StallCause.MultiCycle => "multi-cycle",
+                    StallCause.InstructionCacheMiss => "instruction-cache-miss",
+                    _ => "data-cache-miss",
                 });
                 json.WriteString("stage", AsciiTrace.Name(stall.Stage));
                 if (stall.Producer != 0)
@@ -226,6 +246,21 @@ public static class JsonTrace
                 json.WriteString("address", Hex(store.Address));
                 json.WriteNumber("bytes", store.Bytes);
                 json.WriteString("value", Hex(store.Value));
+                break;
+            case CacheEvent access:
+                json.WriteString("type", "cache");
+                json.WriteNumber("seq", access.Seq);
+                json.WriteString("cache", access.Kind == CacheKind.Instruction ? "instruction" : "data");
+                json.WriteString("address", Hex(access.Address));
+                json.WriteBoolean("hit", access.Hit);
+                json.WriteNumber("set", access.Set);
+                json.WriteNumber("way", access.Way);
+                json.WriteString("tag", Hex(access.Tag));
+                if (access.Evicted)
+                {
+                    json.WriteString("evictedTag", Hex(access.EvictedTag));
+                }
+
                 break;
             case TrapEvent trap:
                 json.WriteString("type", "trap");

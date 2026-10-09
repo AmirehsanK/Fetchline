@@ -146,7 +146,7 @@ public class StatePaneTests
         // Every cause there is has a name, and no two the same.
         var messages = EnglishMessages.Instance;
         Assert.Equal(
-            ["load-use", "no forwarding", "branch in ID", "multi-cycle"],
+            ["load-use", "no forwarding", "branch in ID", "multi-cycle", "instruction cache miss", "data cache miss"],
             Enum.GetValues<StallCause>().Select(messages.NameOf));
         Assert.Equal(["branch", "system instruction", "trap", "stop"], Enum.GetValues<FlushCause>().Select(messages.NameOf));
     }

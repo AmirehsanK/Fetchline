@@ -12,6 +12,8 @@ public sealed class PipelineStats
     private readonly int[] _stalls = new int[Enum.GetValues<StallCause>().Length];
     private readonly int[] _flushes = new int[Enum.GetValues<FlushCause>().Length];
     private readonly int[] _forwards = new int[Enum.GetValues<ForwardSource>().Length];
+    private readonly int[] _cacheAccesses = new int[Enum.GetValues<CacheKind>().Length];
+    private readonly int[] _cacheMisses = new int[Enum.GetValues<CacheKind>().Length];
 
     public ulong Cycles { get; private set; }
 
@@ -46,6 +48,12 @@ public sealed class PipelineStats
     public int Stores { get; private set; }
 
     public int Traps { get; private set; }
+
+    /// <summary>How many times a cache was asked for an address.</summary>
+    public int CacheAccesses(CacheKind kind) => _cacheAccesses[(int)kind];
+
+    /// <summary>How many of those found the block was not there.</summary>
+    public int CacheMisses(CacheKind kind) => _cacheMisses[(int)kind];
 
     public static PipelineStats Of(IEnumerable<CycleRecord> records)
     {
@@ -109,6 +117,10 @@ public sealed class PipelineStats
                     break;
                 case TrapEvent:
                     Traps += one;
+                    break;
+                case CacheEvent access:
+                    _cacheAccesses[(int)access.Kind] += one;
+                    _cacheMisses[(int)access.Kind] += access.Hit ? 0 : one;
                     break;
             }
         }

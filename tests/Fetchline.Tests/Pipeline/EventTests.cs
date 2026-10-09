@@ -247,7 +247,7 @@ public class EventTests
             Assert.Equal(Shape(PipelineStats.Of(records.Take(keep))), Shape(stats));
         }
 
-        Assert.Equal("0 0 0 0 0 0 0 0 0 0,0,0,0 0,0,0,0 0,0", Shape(new PipelineStats()));
+        Assert.Equal("0 0 0 0 0 0 0 0 0 0,0,0,0,0,0 0,0,0,0 0,0", Shape(new PipelineStats()));
         Assert.True(all.Stalls > 0 && all.Flushes > 0 && all.Forwards > 0 && all.Loads > 0 && all.Stores > 0);
     }
 

@@ -534,7 +534,7 @@ branch-prediction lab, a cache simulator, guided lessons and an out-of-order cor
 an example shows the same loop taking fewer cycles walked one way than the other, and says why.
 
 - [x] 10.1 The cache: sets, ways, blocks, least recently used, held to a second statement of the rules
-- [ ] 10.2 Caches in the pipeline: a miss in IF, a miss in MEM, events, and lockstep on every shape
+- [x] 10.2 Caches in the pipeline: a miss in IF, a miss in MEM, events, and lockstep on every shape
 - [ ] 10.3 The command line: the switches, the sentences, the counters, the comparison
 - [ ] 10.4 The playground: the switches, what the cache holds, links that carry it
 - [ ] 10.5 The example that teaches it, both languages, and `docs/CPU.md`
