@@ -1,0 +1,71 @@
+name: Pages
+
+# Publishes the playground to GitHub Pages. It runs only when someone starts it by hand, from
+# the Actions tab or with "gh workflow run pages.yml", and it can only succeed once Pages has
+# been switched on for the repository with GitHub Actions as its source (Settings, Pages).
+# Switching Pages on is the owner's decision, and so is making this run on every push: that is
+# the two lines marked below.
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One publication at a time, and one that has started is allowed to finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Publish the playground
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      # Nothing is published that has not passed its tests on this very commit.
+      - name: Test
+        run: dotnet test Fetchline.slnx -c Release
+
+      - name: Publish
+        run: dotnet publish src/Fetchline.Web -c Release -o artifacts/site --nologo
+
+      # A project's pages are served from a folder named after it, not from the root, so the
+      # page has to be told where it lives. The step fails if the line it changes is not there.
+      - name: Fit it to where it will be served
+        run: |
+          cd artifacts/site/wwwroot
+          sed -i 's|<base href="/" />|<base href="${{ steps.pages.outputs.base_path }}/" />|' index.html
+          grep -q '<base href="${{ steps.pages.outputs.base_path }}/" />' index.html
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: artifacts/site/wwwroot
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

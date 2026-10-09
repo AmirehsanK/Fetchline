@@ -50,6 +50,12 @@ dotnet run tools/serve.cs -- ../artifacts/site/wwwroot 5196   # serve what was p
 is why the path it is given begins with `..`. The download figures in `docs/CPU.md` 8.1 come
 from the first of these two; measure again after anything that changes what is shipped.
 
+`.github/workflows/pages.yml` publishes the playground to GitHub Pages. It runs only when it is
+started by hand, and only works once the owner has switched Pages on with GitHub Actions as its
+source. It rewrites the page's `<base href>` to the folder a project's pages are served from; the
+preview configuration `fetchline-pages` serves `artifacts/pages` on port 5197 for trying that by
+hand (copy the published `wwwroot` into `artifacts/pages/Fetchline` and change the line).
+
 `dotnet test` takes about twenty seconds here. Most of that is `EveryConfigurationTests`, which
 runs 2,000 random programs on all 64 correct configurations, in parallel; a failure there prints
 the number of the program, its seed and the switches, which is everything needed to replay it
