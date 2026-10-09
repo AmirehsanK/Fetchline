@@ -421,23 +421,35 @@ machine only when it is a stop. Together they took a run from 4.64 ms to 3.77 ms
 Taken with `pwsh tools/site-size.ps1` on 8 October 2026, which publishes the playground in
 Release (trimmed, .NET 10.0.11, without the `wasm-tools` workload) and adds up what was
 published. Publishing writes a gzip and a Brotli copy beside every file, so the three columns
-are the same 44 files three ways, and the first visit downloads all of them.
+are the same 45 files three ways, and the first visit downloads all of them.
 
 | What | As they are | With gzip | With Brotli |
 |---|---|---|---|
-| Everything a first visit downloads | 6,666,949 bytes | 2,642,769 | 2,168,961 |
+| Everything a first visit downloads | 6,741,305 bytes | 2,678,649 | 2,198,315 |
 | The .NET runtime, `dotnet.native.wasm` | 3,002,094 | 1,207,892 | 976,842 |
-| The core library, `System.Private.CoreLib` | 1,488,149 | 569,392 | 460,229 |
-| Fetchline itself: the engine, `Fetchline.Viz`, the page, its stylesheet and scripts | 334,904 | 139,268 | 114,836 |
+| The core library, `System.Private.CoreLib` | 1,479,445 | 566,428 | 457,607 |
+| Fetchline itself: the engine, `Fetchline.Viz`, the page, its stylesheet and scripts | 403,628 | 170,473 | 139,584 |
 
-So the download is 2.2 MB from a server that sends Brotli and 2.6 MB from one that sends gzip,
-and one part in twenty of it is Fetchline; the rest is the runtime it runs on. The engine was
-kept free of package references partly for this: `Fetchline.Core` is 187 KB as it is and 64 KB
-compressed. The runtime's share could be cut by relinking it, which needs the `wasm-tools`
-workload; that is not installed here and has not been tried.
+So the download is 2.2 MB from a server that sends Brotli and 2.7 MB from one that sends gzip,
+and one part in sixteen of it is Fetchline; the rest is the runtime it runs on. The engine was
+kept free of package references partly for this: `Fetchline.Core` is 192 KB as it is and 65 KB
+compressed. Share links brought in the one library that was not there before them,
+`System.IO.Compression`, which is 27 KB as it is and 10 KB compressed. The runtime's share
+could be cut by relinking it, which needs the `wasm-tools` workload; that is not installed here
+and has not been tried.
 
 CI publishes the playground on every push, prints the same three totals and fails if the Brotli
 total passes 3 MB. The published files were also loaded from a plain static server
 (`tools/serve.cs`), not the development one: a load and its use were typed into the editor,
 stepped with F10 three times, and the log read `load-use: addi (ID) needs t0; lw (EX) has it
 only after MEM`.
+
+A share link was checked the same way. On the development server the bubble sort was loaded, the
+switches set to stalling, branches in ID, a 1-bit predictor and a three-cycle multiplier, and
+the run stepped to cycle 157; `F2` put the link, 692 characters of it, in the address. Opened
+from the published files on another port, which to a browser is another site with nothing
+stored for it, the page came up at cycle 157 with the same switches, the same source, the same
+registers and log, and the same counters: 91 instructions, 51 stalls, 12 flushes, 26 branches of
+which 12 guessed wrong. Pasting a link over the address of a page that is already open loads it
+too, and one with two characters changed is refused with `THE LINK COULD NOT BE READ: IT IS
+DAMAGED` while what was on screen stays.

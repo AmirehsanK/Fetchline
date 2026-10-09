@@ -304,7 +304,8 @@ running again from reset, which gives the same run because the machine has no ot
 - **Share and export:** a link holds the source, configuration and cycle (deflate, base64url, size
   capped and validated before use). The link is the fragment of the page's address, which follows
   what is on screen a moment behind it and never adds to the history; `F2` brings it up to date
-  at once and copies it. A link carries a check of its source, so one cut short in transit is
+  at once and copies it. A link pasted over the address of a page that is already open is
+  followed as well. A link carries a check of its source, so one cut short in transit is
   refused, with the reason on the status line, instead of running some other program. The
   staircase exports as SVG or PNG, the trace as JSON or Kanata.
 - Every string comes from a typed catalog, so a message missing from one language does not
@@ -476,7 +477,7 @@ link opened in a fresh profile shows the same cycle and the same numbers.
 - [x] 8.5 The examples menu
 - [x] 8.6 The share codec, held to malformed and oversized input, and links that use it
 - [x] 8.7 The timeline, and long runs in slices
-- [ ] 8.8 Checked in a real browser: a link in a fresh profile shows the same cycle and numbers
+- [x] 8.8 Checked in a real browser: a link in a fresh profile shows the same cycle and numbers
 
 **M9. README with real screenshots, `docs/CPU.md`, Pages workflow, exports, Persian.** Done when
 the live site is checked by hand in both languages and a Kanata file opens in Konata.

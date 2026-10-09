@@ -20,6 +20,14 @@ window.fetchlineLink = {
         history.replaceState(null, '', link ? '#' + link : location.pathname + location.search);
     },
 
+    // Tells the listener when the address is given another fragment from outside: a link pasted
+    // into a page that is already open. Writing the fragment from here does not count as that.
+    listen: function (listener) {
+        window.addEventListener('hashchange', function () {
+            listener.invokeMethodAsync('Followed', location.hash);
+        });
+    },
+
     // Copies the page's address. A browser may refuse, and then the caller is told so.
     copy: async function () {
         try {

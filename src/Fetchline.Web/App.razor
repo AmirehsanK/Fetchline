@@ -159,10 +159,36 @@
 
         _self = DotNetObjectReference.Create(this);
         await Js.InvokeVoidAsync("fetchlineKeys.listen", _self);
+        await Js.InvokeVoidAsync("fetchlineLink.listen", _self);
         if (_openAt > 0)
         {
             _ = Go(until: _openAt);
         }
+    }
+
+    /// <summary>
+    /// Called by the page when its address is given another fragment while it is open: a link
+    /// pasted over the one that was there. A link that can be read replaces what is on screen;
+    /// one that cannot is said to be so, and what is on screen stays.
+    /// </summary>
+    [JSInvokable]
+    public void Followed(string fragment)
+    {
+        if (ShareLink.TryDecode(fragment, out var shared, out var problem))
+        {
+            Load(shared.Source, shared.Config);
+            if (shared.Cycle > 0)
+            {
+                _ = Go(until: shared.Cycle);
+            }
+        }
+        else if (fragment.Length > 1)
+        {
+            Say(Messages.LinkNotRead(problem));
+            Touch();
+        }
+
+        StateHasChanged();
     }
 
     /// <summary>Called by the page when one of the function keys on the soft keys is pressed.</summary>
