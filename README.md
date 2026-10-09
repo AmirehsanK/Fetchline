@@ -179,6 +179,46 @@ fetchline: the program stopped: a store to 0x00000000, which is in 'text' and ca
   prog.s:3: sw   a0, 0(zero)
 ```
 
+## Caches
+
+Without them the pipeline reads any instruction and any word of data in one cycle. `--icache`
+and `--dcache` put a cache in front of IF and in front of MEM: sets, ways and bytes in a block,
+with the cycles a miss costs after a colon. A cache holds no data, only which blocks it would
+have, so it changes how long a program takes and can never change what it computes; that is
+checked in lockstep like every other switch.
+
+Two of the examples add up the same table of 8 rows of 8 words, one along its rows and one down
+its columns. Each trace ends with its totals:
+
+```bash
+dotnet run --project src/Fetchline.Cli -- trace examples/cache-rows.s --dcache 4x1x16:10 --cycles 1 --no-log
+dotnet run --project src/Fetchline.Cli -- trace examples/cache-columns.s --dcache 4x1x16:10 --cycles 1 --no-log
+```
+
+```
+ 549 instructions, 909 cycles, CPI 1.66, 224 stalls, 402 forwards, 65 flushes
+ data cache: 64 accesses, 16 misses (25.0%)
+
+ 549 instructions, 1389 cycles, CPI 2.53, 704 stalls, 401 forwards, 65 flushes
+ data cache: 64 accesses, 64 misses (100.0%)
+```
+
+Along a row each word is next to the last one read, and a block of 16 bytes brings in four of
+them at once. Down a column each word is a whole row further on, and in a cache this small
+every block lands on one that was brought in a moment before. With no cache both take 749
+cycles, and with one the whole table fits in (`16x1x16:10`) both take 909. A miss is a line of
+the log like any other stall:
+
+```
+ c36  stall    data cache miss: lw (MEM) waits 10 cycles for the block at 0x10000020; what is behind it waits too
+```
+
+In the playground the caches are two more switches, and the pane that holds the counters gains
+a `CACHE` tab: a row for each set, a column for each way, the block used in the cycle on screen
+lit, and the one that goes next dim.
+
+![What the data cache holds while the table is added up down its columns](docs/img/cache.png)
+
 ## Licence
 
 MIT. See [LICENSE](LICENSE).

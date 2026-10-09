@@ -554,7 +554,7 @@ an example shows the same loop taking fewer cycles walked one way than the other
 - [x] 10.2 Caches in the pipeline: a miss in IF, a miss in MEM, events, and lockstep on every shape
 - [x] 10.3 The command line: the switches, the sentences, the counters, the comparison
 - [x] 10.4 The playground: the switches, what the cache holds, links that carry it
-- [ ] 10.5 The example that teaches it, both languages, and `docs/CPU.md`
+- [x] 10.5 The example that teaches it, both languages, and `docs/CPU.md`
 
 M0 to M6 already make a complete, verified command-line tool; M7 and M8 make it something to
 link to.

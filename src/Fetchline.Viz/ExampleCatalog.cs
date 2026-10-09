@@ -19,7 +19,7 @@ public static class ExampleCatalog
 
     private static readonly string[] Order =
     [
-        "load-use.s", "forwarding.s", "branch.s", "multiply.s",
+        "load-use.s", "forwarding.s", "branch.s", "multiply.s", "cache-rows.s", "cache-columns.s",
         "hello.s", "sum.s", "fib.s", "gcd.s", "factorial.s", "bubble-sort.s", "primes.s",
     ];
 

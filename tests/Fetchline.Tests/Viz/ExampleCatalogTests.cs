@@ -16,13 +16,13 @@ public class ExampleCatalogTests
     }
 
     [Fact]
-    public void TheMenuGoesFromTheFourLessonsToWholeProgramsShortestFirst()
+    public void TheMenuGoesFromTheLessonsToWholeProgramsShortestFirst()
     {
         // A new example has to be given its place here and in the catalogue: left to itself it
         // would go to the end, which is rarely where it belongs.
         Assert.Equal(
             [
-                "load-use.s", "forwarding.s", "branch.s", "multiply.s",
+                "load-use.s", "forwarding.s", "branch.s", "multiply.s", "cache-rows.s", "cache-columns.s",
                 "hello.s", "sum.s", "fib.s", "gcd.s", "factorial.s", "bubble-sort.s", "primes.s",
             ],
             ExampleCatalog.All.Select(example => example.Name));

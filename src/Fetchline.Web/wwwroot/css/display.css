@@ -357,10 +357,10 @@ body {
         overflow: hidden;
     }
 
-    /* The last column is as wide as two columns of registers, and a word of memory fits it too. */
+    /* The last column is as wide as two columns of registers and the four names over the pane under them. */
     .desk {
         height: 100%;
-        grid-template-columns: minmax(38ch, 27%) minmax(0, 1fr) 33ch;
+        grid-template-columns: minmax(38ch, 27%) minmax(0, 1fr) 37ch;
         grid-template-rows: auto auto auto minmax(0, 1.7fr) minmax(0, 1fr) auto;
         grid-template-areas:
             "status   status   status"
@@ -641,9 +641,9 @@ body {
 }
 
 /* A pane that holds several things is titled with all their names; the one showing is lit. */
+/* The names stand close together: each has a little room of its own, and four of them have to fit. */
 .tabs {
     display: flex;
-    gap: 1ch;
 }
 
 .tab {

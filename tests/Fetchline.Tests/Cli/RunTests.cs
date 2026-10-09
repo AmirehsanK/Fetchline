@@ -18,6 +18,8 @@ public class RunTests
         ["branch.s"] = string.Empty,
         ["multiply.s"] = string.Empty,
         ["primes.s"] = "1229\n",
+        ["cache-rows.s"] = "2080\n",
+        ["cache-columns.s"] = "2080\n",
     };
 
     public static TheoryData<string> Examples() => AsmAndDisTests.Examples();

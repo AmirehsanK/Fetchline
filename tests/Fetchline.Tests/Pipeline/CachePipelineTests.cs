@@ -203,6 +203,39 @@ public class CachePipelineTests
         Assert.NotEqual(HashOf(cached), HashOf(cached with { DataCache = new CacheConfig(2, 1, 8, 6) }));
     }
 
+    [Fact]
+    public void TheSameTableTakesLongerDownItsColumnsThanAlongItsRows()
+    {
+        // The example that teaches it: 64 words, read once each, in two orders.
+        static (int Misses, int Cycles, string Printed) Walk(string example, CacheConfig? cache)
+        {
+            var run = Run(File.ReadAllText(Repo.PathOf("examples", example)), new PipelineConfig { DataCache = cache });
+            Assert.Equal(64, run.Records.SelectMany(record => record.Events).OfType<MemReadEvent>().Count());
+            return (Misses(run, CacheKind.Data), run.Cycles, run.Output);
+        }
+
+        var small = new CacheConfig(4, 1, 16, 10);
+        var twoWays = new CacheConfig(2, 2, 16, 10);
+        var big = new CacheConfig(16, 1, 16, 10);
+
+        // With no cache the two orders are the same program for all the pipeline can tell.
+        Assert.Equal((0, 749, "2080\n"), Walk("cache-rows.s", null));
+        Assert.Equal((0, 749, "2080\n"), Walk("cache-columns.s", null));
+
+        // Along the rows a block of four words is waited for once and then read three times
+        // more. Down the columns the next word is two blocks on, in a set that the word after
+        // it will want again: every load misses. 48 more misses at ten cycles each is 480.
+        Assert.Equal((16, 909, "2080\n"), Walk("cache-rows.s", small));
+        Assert.Equal((64, 1389, "2080\n"), Walk("cache-columns.s", small));
+
+        // Two ways do not help: a column is eight blocks, and they all want the same set.
+        Assert.Equal((64, 1389, "2080\n"), Walk("cache-columns.s", twoWays));
+
+        // A cache the whole table fits in makes the order not matter again.
+        Assert.Equal((16, 909, "2080\n"), Walk("cache-rows.s", big));
+        Assert.Equal((16, 909, "2080\n"), Walk("cache-columns.s", big));
+    }
+
     /// <summary>The shapes of cache the random programs are run with, and what each is there for.</summary>
     private static readonly (CacheConfig? Instructions, CacheConfig? Data)[] Shapes =
     [

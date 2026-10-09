@@ -425,14 +425,14 @@ are the same 45 files three ways, and the first visit downloads all of them.
 
 | What | As they are | With gzip | With Brotli |
 |---|---|---|---|
-| Everything a first visit downloads | 6,784,546 bytes | 2,693,956 | 2,211,348 |
+| Everything a first visit downloads | 6,815,446 bytes | 2,705,130 | 2,219,595 |
 | The .NET runtime, `dotnet.native.wasm` | 3,002,094 | 1,207,892 | 976,842 |
-| The core library, `System.Private.CoreLib` | 1,481,493 | 567,090 | 458,335 |
-| Fetchline itself: the engine, `Fetchline.Viz`, the page, its stylesheet and scripts | 436,629 | 182,938 | 150,145 |
+| The core library, `System.Private.CoreLib` | 1,482,005 | 567,151 | 458,277 |
+| Fetchline itself: the engine, `Fetchline.Viz`, the page, its stylesheet and scripts | 466,505 | 194,015 | 158,420 |
 
 So the download is 2.2 MB from a server that sends Brotli and 2.7 MB from one that sends gzip,
-and one part in fifteen of it is Fetchline; the rest is the runtime it runs on. The engine was
-kept free of package references partly for this: `Fetchline.Core` is 192 KB as it is and 65 KB
+and one part in fourteen of it is Fetchline; the rest is the runtime it runs on. The engine was
+kept free of package references partly for this: `Fetchline.Core` is 201 KB as it is and 68 KB
 compressed. Share links brought in the one library that was not there before them,
 `System.IO.Compression`, which is 27 KB as it is and 10 KB compressed. The runtime's share
 could be cut by relinking it, which needs the `wasm-tools` workload; that is not installed here
@@ -499,3 +499,75 @@ records, in `Fetchline.Viz`, where it is tested without a browser; the page only
   it was given is still in what it says. Another checks that the Persian catalog is in Persian
   wherever it is a sentence, and that the comparison table, which is text in columns, keeps to
   characters one cell wide in Persian too.
+
+## 10. Caches
+
+The depth track. A cache here is a model of time and of nothing else: it holds the tags of the
+blocks it would have, and no data. The data is in the machine's memory, where it always was, so
+a cache cannot make a program compute something else. That is the whole design, and it is why
+the checks below can be as strong as they are.
+
+- **The cache.** Sets, ways and bytes in a block are each a power of two (the ways need not be);
+  an address is a tag, a set and an offset. A block that is not there goes into an empty way
+  if the set has one, the lowest numbered first, and otherwise over the way used longest ago.
+  "Longest ago" is counted in accesses to that cache, a clock of its own, so what a cache does
+  depends on the order of its accesses and on nothing else.
+- **A miss in MEM** holds the instruction there for the penalty, sends bubbles on to WB, and
+  holds everything behind it. MEM is the commit point, so the instruction takes effect once,
+  when the wait is over. There is one thing a held instruction must do while it waits: one in
+  EX takes its forwarded operands in the first cycle of the wait. The instruction in WB that an
+  operand may come from is there for that cycle only; by the time EX is let go it has left the
+  pipeline, and what ID read is stale.
+- **A miss in IF** holds only fetch. The instruction is in IF for the penalty and bubbles go on
+  to ID; what is ahead of it carries on. If the pipeline is redirected while it waits, it is
+  squashed like anything else in IF and its block stays in the cache, as it would. The guess
+  about where fetch goes next is made when the word arrives, not when it was asked for.
+- **A store** that misses brings its block in like a load, and pays the same. Nothing is
+  written back later, because there is nothing in the cache to write.
+- **Events.** Every access is an event with its set, its way, the block and the block put out;
+  every cycle of waiting is a stall whose cause is the miss. The log, the counters and the
+  playground's view of what a cache holds are made from those.
+
+How it was checked:
+
+- **The cache against a second statement of its rules.** The rules again as a list for each set
+  in the order of use: a block in the list is a hit and goes to the end; one that is not goes
+  to the end too, and if the list is then longer than the ways, what is at the front is put
+  out. Seven shapes, 4,000 random accesses each, and the cache agrees on every hit, every set
+  and every block put out. By hand: a direct-mapped cache where two addresses fight over a
+  set; two ways where the one used longest ago goes; one block more than the ways, taken in
+  turn, misses every time, and one fewer never misses after the first round.
+- **Rows by hand.** A load that misses with a penalty of three is in MEM four cycles, the
+  instruction behind it in EX four, and the next load of the same block hits. An instruction
+  that misses in IF with a penalty of two is in IF three cycles while the one ahead of it is
+  never held. A store takes effect in the last cycle of its wait and not before.
+- **The operand that has to be taken in time.** `li t0, 5`, a store that misses, `addi t1, t0, 1`:
+  the forward from MEM/WB happens in cycle 5, the first of the wait, and the answer is 6. With
+  that one line of the engine switched off, this test fails, and so does the sweep below.
+- **Lockstep, every shape, every correct configuration.** 300 random programs, each with one
+  of nine pairs of caches (one word that nearly always misses, both caches small with different
+  penalties, both big enough to miss once), on all 64 correct configurations, in lockstep with
+  the reference machine: no difference, and more than 100,000 misses on the way. Then every
+  instruction cache the playground offers with every data cache it offers, twelve pairs, on 40
+  programs and all 64 configurations: 30,720 runs, no difference. And the official tests, on
+  the command line, with caches small enough to miss all the time: 64 pass.
+- **What a miss costs, as a formula.** A miss in MEM stops everything, so it costs exactly its
+  penalty: with only a data cache, the run takes the cycles it takes without one plus the
+  penalty for each miss, and the sweep holds every run to that. A miss in IF costs at most its
+  penalty, since a wait that coincides with a stall is served at the same time, and the sweep
+  holds every run to that as well. (A program that reads the cycle counter is left out: it can
+  do something else when it reads another number.)
+- **Off never breaks.** 120 random programs with hazard handling off and caches on run to
+  whatever end they come to without the engine throwing.
+- **The view is the machine's.** The playground folds what each cache holds out of the events,
+  and steps it back. A second machine runs beside it and is looked inside: on two examples and
+  24 random programs with three pairs of caches, the two agree after every cycle, and again at
+  60 cycles jumped to in any order.
+- **The example.** `examples/cache-rows.s` and `examples/cache-columns.s` add up the same table
+  of 8 rows of 8 words and print 2080. With no cache each takes 749 cycles. With a direct-mapped
+  data cache of four 16-byte blocks and a penalty of 10 (`--dcache 4x1x16:10`), going along the
+  rows misses 16 times in 64 loads, once for each block of four words, and takes 909 cycles;
+  going down the columns misses all 64 times, each block landing on the one brought in two
+  loads before, and takes 1,389. Two ways do not help, because a column is eight blocks that
+  all want the same set. A cache the whole table fits in (`16x1x16:10`) makes the order not
+  matter again: 909 both ways. These figures are pinned by a test.
