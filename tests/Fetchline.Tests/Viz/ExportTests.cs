@@ -193,7 +193,7 @@ public class ExportTests
             Assert.True((ulong)completed == stats.Instructions && flushed == stats.Squashed, where);
             Assert.True(elapsed >= records.Count && elapsed <= records.Count + 1, where);
             Assert.Equal(stats.Forwards > 0, lines.Any(line => line.StartsWith("W\t", StringComparison.Ordinal)));
-            Assert.Equal(stats.Stalls > 0, lines.Any(line => line.EndsWith("\t1\tstl", StringComparison.Ordinal)));
+            Assert.All(lines.Where(line => line[0] is 'S' or 'E'), line => Assert.Equal("0", line.Split('\t')[2]));
         }
     }
 

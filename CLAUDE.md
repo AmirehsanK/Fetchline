@@ -7,8 +7,11 @@ and the milestones. Follow it. Where the code and the spec disagree, that is a b
 resolve it explicitly, do not silently diverge. `docs/CPU.md` explains each mechanism and how it
 was validated; it is written alongside the engine, one mechanism at a time.
 
-The repository is <https://github.com/AmirehsanK/Fetchline> (private since it was created on
-8 October 2026; making it public is the owner's call).
+The repository is <https://github.com/AmirehsanK/Fetchline>. The owner made it public on
+9 October 2026 and switched Pages on; the playground is live at
+<https://amirehsank.github.io/Fetchline/>. The Pages workflow is still started by hand
+(`gh workflow run pages.yml`), so the live site is whatever was last published, not the last
+push: publish again after a change to what is shipped, and say so.
 
 ## Environment facts
 
@@ -116,5 +119,5 @@ The owner asked on 8 October 2026 for each milestone to be split into smaller se
 each section to be committed and pushed. `docs/SPEC.md` section 10 lists the sections; tick a box
 in the commit that finishes it. Commit only what builds and passes `dotnet test`.
 
-Switching on Pages, making the repository public, changing its settings and downloading a font
-are outward-facing: ask first.
+Changing the repository's settings, making the Pages workflow run on every push and downloading
+a font are outward-facing: ask first.

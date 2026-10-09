@@ -14,16 +14,12 @@ E	0	0	ID
 S	0	0	EX
 E	1	0	IF
 S	1	0	ID
-S	1	1	stl
 I	2	3	0
 L	2	0	00000008: sub x7, x5, x4
 S	2	0	IF
-S	2	1	stl
 C	1
 E	0	0	EX
 S	0	0	MEM
-E	1	1	stl
-E	2	1	stl
 C	1
 E	0	0	MEM
 S	0	0	WB

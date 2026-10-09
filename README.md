@@ -8,6 +8,9 @@ written as a sentence. The same engine runs in the terminal, in the tests and in
 
 ![The playground: source, pipeline diagram, hazard log, registers and counters on one screen](docs/img/playground.jpg)
 
+**[Open the playground](https://amirehsank.github.io/Fetchline/)**: it runs in the browser and
+needs nothing installed.
+
 The engine, the command line and the playground are complete and verified. What each milestone
 had to prove is in [docs/SPEC.md](docs/SPEC.md), and how each mechanism works and was checked is
 in [docs/CPU.md](docs/CPU.md).
@@ -31,7 +34,8 @@ the counters, and a run you can step forwards and backwards.
 dotnet run --project src/Fetchline.Web --launch-profile http
 ```
 
-Then open <http://localhost:5195>. It is not published anywhere yet. Everything is on the keys
+Then open <http://localhost:5195>, or use the one that is already running at
+<https://amirehsank.github.io/Fetchline/>. Everything is on the keys
 under the screen, which are real function keys too:
 
 | Key | What it does |

@@ -499,7 +499,7 @@ the live site is checked by hand in both languages and a Kanata file opens in Ko
 - [x] 9.2 The Persian catalog, and a right-to-left page whose diagrams stay left to right
 - [x] 9.3 The README with real screenshots, and `docs/CPU.md` complete
 - [x] 9.4 The Pages workflow (switching Pages on is the owner's decision)
-- [ ] 9.5 The live site checked by hand in both languages; a Kanata file opened in Konata
+- [x] 9.5 The live site checked by hand in both languages; a Kanata file opened in Konata
 
 **M10+. One depth track** (a branch-prediction lab, a cache simulator, guided lessons or an
 out-of-order core), with its own test and its own example.

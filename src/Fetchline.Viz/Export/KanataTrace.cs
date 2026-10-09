@@ -14,22 +14,21 @@ namespace Fetchline.Viz.Export;
 /// C       n                   n cycles go by
 /// I       id  seq  thread     an instruction appears; ids count up from zero in file order
 /// L       id  type  text      its label: type 0 beside its row, type 1 when pointed at
-/// S       id  lane  stage     it enters a stage
+/// S       id  lane  stage     it enters a stage; everything here is in lane 0
 /// E       id  lane  stage     it leaves a stage
 /// R       id  retire  type    it is gone: type 0 completed, type 1 thrown away
 /// W       id  producer  type  it took a value from another instruction: an arrow
 /// </code>
-/// An instruction that is held stays in its stage, so its box is as long as the wait, and the
-/// wait itself is a stage named <c>stl</c> in lane 1, which is where the format's own examples put
-/// a stall. One that is squashed ends in the cycle after the one it was thrown away in, as in
-/// the diagram. Konata draws an arrow only between stages with an X in their names, which EX has.
+/// An instruction that is held stays in its stage, so its box is as long as the wait; Konata
+/// writes the stage's name in the first cycle of the box and counts the cycles after it. The
+/// format has a second lane where a stall can be drawn over the stages, but drawn there it
+/// covers the name of the very stage that is waiting, so it is not used. One that is squashed
+/// ends in the cycle after the one it was thrown away in, as in the diagram. Konata draws an
+/// arrow only between stages with an X in their names, which EX has.
 /// </summary>
 public static class KanataTrace
 {
     public const string Header = "Kanata\t0004";
-
-    /// <summary>The name of the stage, in lane 1, that an instruction is in while it is held.</summary>
-    public const string StallStage = "stl";
 
     public static string Write(Program program, IReadOnlyList<CycleRecord> records)
     {
@@ -40,7 +39,6 @@ public static class KanataTrace
         // The id each instruction was given, and the stage it is in as far as the log has said.
         var ids = new Dictionary<ulong, int>();
         var inside = new Dictionary<ulong, Stage>();
-        var waiting = new HashSet<ulong>();
 
         // What left the pipeline in the cycle before: said at the start of the next, when its
         // last stage is over.
@@ -55,11 +53,6 @@ public static class KanataTrace
         {
             foreach (var (seq, completed) in leaving)
             {
-                if (waiting.Remove(seq))
-                {
-                    Line("E", ids[seq], 1, StallStage);
-                }
-
                 // Only what completes is counted; what is thrown away takes the number it would
                 // have had, as the format allows.
                 Line("E", ids[seq], 0, AsciiTrace.Name(inside[seq]));
@@ -105,15 +98,6 @@ public static class KanataTrace
 
                     Line("S", id, 0, AsciiTrace.Name(stage));
                     inside[view.Seq] = stage;
-                }
-
-                if (view.State == Occupancy.Held && waiting.Add(view.Seq))
-                {
-                    Line("S", id, 1, StallStage);
-                }
-                else if (view.State != Occupancy.Held && waiting.Remove(view.Seq))
-                {
-                    Line("E", id, 1, StallStage);
                 }
 
                 if (view.State == Occupancy.Squashed)

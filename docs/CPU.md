@@ -454,6 +454,13 @@ which 12 guessed wrong. Pasting a link over the address of a page that is alread
 too, and one with two characters changed is refused with `THE LINK COULD NOT BE READ: IT IS
 DAMAGED` while what was on screen stays.
 
+The same build is live at <https://amirehsank.github.io/Fetchline/>, published by the Pages
+workflow on 9 October 2026 and checked there in both languages: the load-use example stepped to
+cycle 6 reads the same three lines of log in English and in Persian, the datapath and the
+comparison table come up, the diagram stays left to right in a page that runs from the right,
+and nothing it asks for fails to load. Pages sends the files with gzip, and a first visit
+transferred 2,659,284 bytes.
+
 ## 9. What is drawn, shared and saved
 
 Nothing in the visualizer looks inside the machine. Each of these is made from the cycle
@@ -480,8 +487,12 @@ records, in `Fetchline.Viz`, where it is tested without a browser; the page only
   test holds it to that description on the examples built three ways: ids count up from zero in
   the order instructions appear, a stage is ended before the next begins, every instruction is
   retired or flushed exactly once, and the two counts are the run's instructions and its
-  squashed instructions. The log of the load-use hazard is kept as a golden file. Opening one
-  in Konata itself is the one check that is left to a person.
+  squashed instructions. The log of the load-use hazard is kept as a golden file. Two logs were then
+  opened in Konata 1.2.0 itself, which since 1.0 is a page in a browser: the load-use hazard came
+  up as 3 instructions over 8 cycles with the held ID stage as a box two cycles long and an
+  arrow into each EX that took a forwarded value, and the bubble sort as 371 instructions over
+  397 cycles. That is where the second lane was dropped: a stall drawn in it covered the name
+  of the stage that was waiting.
 - **Two languages.** A message is a method of an interface, so a language that lacks one does
   not compile. A test goes through every message of both catalogs, more than 150 with each
   value of each enumeration, and checks that it says something and that every name or number
