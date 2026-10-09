@@ -205,6 +205,34 @@ for each load-use pair, plus `k - 1` for each multiply or divide when those take
 test holds the pipeline to that on seeded random programs, and to the distance formula when
 forwarding is off.
 
+### 7.1 Caches (the depth track)
+
+The pipeline of section 7 reads an instruction or a word of data in one cycle, always. With a
+cache switched on, it reads in one cycle what the cache holds and waits for what it does not.
+There are two, each a switch that is off unless it is given: an instruction cache in front of
+IF and a data cache in front of MEM.
+
+- **A cache** is a number of sets, each of some ways, of blocks of some bytes: all three are
+  powers of two, and one way is a direct-mapped cache. An address is a tag, a set and an offset
+  within the block. A block that is not there is brought in over the way of its set that was
+  used longest ago, and the instruction that asked waits a miss penalty of so many cycles.
+- **What is modelled is time.** The cache holds tags, not data: the data is in the machine's
+  memory as it always was, so a cache cannot change what a program computes, only how long it
+  takes. That is checked the way the other switches are: every correct configuration, with
+  caches of several shapes, runs in lockstep with the reference machine.
+- **A store** that misses brings its block in like a load (write-allocate) and pays the same
+  penalty. Nothing is written back later, because there is no data in the cache to write.
+- **A miss in IF** holds fetch: the instruction is in IF for the penalty and bubbles go on to ID
+  in its place. Nothing else waits. If the pipeline is redirected while it waits it is thrown
+  away like anything else in IF, and its block stays in the cache, as it would.
+- **A miss in MEM** holds the instruction in MEM and everything behind it, and bubbles go on to
+  WB. MEM is the commit point, so the instruction takes effect when its wait is over, once. An
+  instruction held in EX behind it takes its forwarded operands when the wait begins: by the
+  time it is let go, the instruction they came from has left the pipeline.
+- **Each access is an event**, a hit or a miss with its set, its way and the block it put out,
+  and each cycle of waiting is a stall with a cause of its own. So the counters, the log and a
+  view of what the cache holds are made from the records, like everything else.
+
 ## 8. Visualizer
 
 `Fetchline.Viz` is plain C# with no UI dependency, so it is unit-tested and shared by both front
@@ -501,8 +529,15 @@ the live site is checked by hand in both languages and a Kanata file opens in Ko
 - [x] 9.4 The Pages workflow (switching Pages on is the owner's decision)
 - [x] 9.5 The live site checked by hand in both languages; a Kanata file opened in Konata
 
-**M10+. One depth track** (a branch-prediction lab, a cache simulator, guided lessons or an
-out-of-order core), with its own test and its own example.
+**M10. The depth track: a cache simulator.** (The owner chose it on 9 October 2026 from a
+branch-prediction lab, a cache simulator, guided lessons and an out-of-order core.) Done when
+an example shows the same loop taking fewer cycles walked one way than the other, and says why.
+
+- [x] 10.1 The cache: sets, ways, blocks, least recently used, held to a second statement of the rules
+- [ ] 10.2 Caches in the pipeline: a miss in IF, a miss in MEM, events, and lockstep on every shape
+- [ ] 10.3 The command line: the switches, the sentences, the counters, the comparison
+- [ ] 10.4 The playground: the switches, what the cache holds, links that carry it
+- [ ] 10.5 The example that teaches it, both languages, and `docs/CPU.md`
 
 M0 to M6 already make a complete, verified command-line tool; M7 and M8 make it something to
 link to.
@@ -541,8 +576,8 @@ of every file. It runs only when started by hand. Both sources are BSD-3-Clause.
 ## 12. Deferred
 
 Compressed instructions, floating point, atomics, interrupts and timers, supervisor mode and
-virtual memory, RV64, superscalar and out-of-order execution, caches (unless chosen as the depth
-track), a source-generated decoder, and `riscv-arch-test` (it needs RISCOF and a Sail reference).
+virtual memory, RV64, superscalar and out-of-order execution, a second level of cache and a
+write buffer, a source-generated decoder, and `riscv-arch-test` (it needs RISCOF and a Sail reference).
 
 Realism has no natural end. The rule that bounds it: a new CPU behaviour needs a test that shows
 it and an example that teaches it.
@@ -553,9 +588,9 @@ it and an example that teaches it.
 |---|---|---|
 | Web UI: Blazor WebAssembly, or a C# engine behind `[JSExport]` with a React UI | Blazor | M7 |
 | Phosphor colour and whether a specific machine is the model for the look | Green, no specific machine | M7 |
-| Whether the repository is public | Private (created 8 October 2026) | M9, because Pages on a private repository needs a paid plan |
+| Whether the repository is public | Public since 9 October 2026, with Pages on | M9, because Pages on a private repository needs a paid plan |
 | Persian UI | Yes | M9 |
-| The depth track | Not chosen | M10 |
+| The depth track | The cache simulator (chosen 9 October 2026) | M10 |
 
 ## 14. Sources
 
