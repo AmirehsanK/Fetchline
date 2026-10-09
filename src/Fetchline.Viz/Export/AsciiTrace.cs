@@ -87,6 +87,16 @@ public static class AsciiTrace
             .Append(messages.Summary(stats.Instructions, stats.Cycles, stats.Cpi, stats.Stalls, stats.Forwards, stats.Flushes))
             .Append('\n');
 
+        foreach (var kind in Enum.GetValues<CacheKind>())
+        {
+            if (stats.CacheAccesses(kind) > 0)
+            {
+                text.Append(' ')
+                    .Append(messages.CacheSummary(messages.NameOf(kind), stats.CacheAccesses(kind), stats.CacheMisses(kind)))
+                    .Append('\n');
+            }
+        }
+
         if (divergence is not null)
         {
             text.Append(' ').Append(explainer.Describe(divergence)).Append('\n');

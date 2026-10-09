@@ -47,6 +47,21 @@ public sealed class PersianMessages : IMessages
     public string MultiCycle(string instruction, string stage, int remaining) =>
         $"چندچرخه‌ای: {instruction} در {stage} هنوز {Number(remaining)} چرخه‌ی دیگر لازم دارد؛ هرچه پشت آن است منتظر می‌ماند";
 
+    public string CacheMiss(CacheKind kind, string instruction, string stage, string block, int cycles, string? replaced) =>
+        $"فقدان در {NameOf(kind)}: {instruction} در {stage} {Number(cycles)} چرخه منتظر بلوک {block} می‌ماند"
+        + (kind == CacheKind.Data ? "؛ هرچه پشت آن است نیز منتظر می‌ماند" : string.Empty)
+        + (replaced is null ? string.Empty : $"؛ بلوک {replaced} بیرون گذاشته می‌شود");
+
+    public string NameOf(CacheKind kind) => kind == CacheKind.Instruction ? "حافظه‌ی نهان دستور" : "حافظه‌ی نهان داده";
+
+    public string CacheSummary(string cache, int accesses, int misses) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"{cache}: {accesses} دسترسی، {misses} فقدان، {(accesses == 0 ? 0 : 100.0 * misses / accesses):0.0} درصد");
+
+    public string EachWith(string caches) => $"هر سطر با {caches}";
+
+    public string CacheMissesHeading(CacheKind kind) => "فقدان‌های " + NameOf(kind);
+
     // The latch, the stage and the operand are one left-to-right run, as in the terminal.
     public string Forwarded(string latch, string stage, string operand, string register, string producer) =>
         $"{latch} -> {stage}.{operand}   {register} از {producer}";

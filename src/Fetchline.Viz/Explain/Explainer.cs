@@ -80,6 +80,19 @@ public sealed class Explainer(StaircaseLayout layout, InstructionLabels labels, 
                         stall.Seq));
                     break;
 
+                // A miss is said once, when it happens, with how long it will take: the cycles
+                // of waiting that follow are the same thing still going on.
+                case CacheEvent { Hit: false } miss:
+                    var wait = record.Events.OfType<StallEvent>().FirstOrDefault(stall =>
+                        stall.Seq == miss.Seq && stall.Cause is StallCause.InstructionCacheMiss or StallCause.DataCacheMiss);
+                    lines.Add(new LogLine(
+                        record.Cycle, LogKind.Stall,
+                        Messages.CacheMiss(
+                            miss.Kind, Name(miss.Seq), miss.Kind == CacheKind.Instruction ? "IF" : "MEM", labels.Address(miss.Block),
+                            (wait?.Remaining ?? 0) + 1, miss.Evicted ? labels.Address(miss.EvictedBlock) : null),
+                        miss.Seq));
+                    break;
+
                 case ForwardEvent forward:
                     lines.Add(new LogLine(
                         record.Cycle, LogKind.Forward,

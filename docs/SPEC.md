@@ -408,6 +408,14 @@ wrong value is named under the table. The names in a row are the names the switc
 row can be typed back to `trace`. The table is made by `Comparison` in the engine and
 `CompareTable` in `Fetchline.Viz`, which the playground's compare view will use as well.
 
+The caches of section 7.1 are two more switches, `--icache` and `--dcache`. Each is `off`, which
+is what it is when not given, or a cache as sets, ways and bytes in a block with the cycles a
+miss costs after a colon: `16x2x16:20`. The penalty may be left out and is then 10. A trace of a
+run with a cache says each miss once, in the cycle it is found, with the block it waits for,
+how long, and the block that is put out for it; under the trace is a line for each cache with
+its accesses and its misses. A comparison does not vary the caches: every row has the ones
+given, and a line under the table says which.
+
 `test --pipeline` takes the same switches and runs the official tests on a pipeline built that
 way; a switch without `--pipeline` is refused, since it would change nothing.
 
@@ -535,7 +543,7 @@ an example shows the same loop taking fewer cycles walked one way than the other
 
 - [x] 10.1 The cache: sets, ways, blocks, least recently used, held to a second statement of the rules
 - [x] 10.2 Caches in the pipeline: a miss in IF, a miss in MEM, events, and lockstep on every shape
-- [ ] 10.3 The command line: the switches, the sentences, the counters, the comparison
+- [x] 10.3 The command line: the switches, the sentences, the counters, the comparison
 - [ ] 10.4 The playground: the switches, what the cache holds, links that carry it
 - [ ] 10.5 The example that teaches it, both languages, and `docs/CPU.md`
 

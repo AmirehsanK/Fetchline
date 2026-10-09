@@ -62,6 +62,14 @@ jobs:
           test tests/vectors/riscv-tests/elf --exclusions tests/conformance-exclusions.txt --pipeline
           --hazards stall --branch id --predictor 2-bit --btb 16 --muldiv 3
 
+      # And with caches small enough to miss all the time: they change the cycles and must
+      # change nothing else.
+      - name: Official RISC-V tests on the pipeline with caches
+        run: >-
+          dotnet run --project src/Fetchline.Cli -c Release --no-build --
+          test tests/vectors/riscv-tests/elf --exclusions tests/conformance-exclusions.txt --pipeline
+          --icache 4x1x16:3 --dcache 2x2x8:5
+
       # The playground as it would be served: trimmed and compressed. Publishing writes a gzip
       # and a Brotli copy beside every file, so the download is a matter of adding up. The
       # figure in docs/CPU.md is 2.2 MB with Brotli; a build past 3 MB has gained something it

@@ -40,6 +40,19 @@ internal sealed class PipelineOptions
         DefaultValueFactory = _ => PipelineConfig.Default.MulDivCycles,
     };
 
+    private readonly Option<string> _instructionCache = new("--icache")
+    {
+        Description = "A cache in front of IF: off, or sets, ways and bytes in a block, as in 16x1x16, "
+            + "with the cycles a miss costs after a colon if not 10.",
+        DefaultValueFactory = _ => SwitchNames.NoCache,
+    };
+
+    private readonly Option<string> _dataCache = new("--dcache")
+    {
+        Description = "A cache in front of MEM, described the same way: 16x2x16:20 is two ways and a miss of 20 cycles.",
+        DefaultValueFactory = _ => SwitchNames.NoCache,
+    };
+
     /// <param name="everyWay">
     /// The command tries every value of a switch that is not given, as <c>compare</c> does. The
     /// help then says so, where for a command that runs one configuration it names the default.
@@ -70,6 +83,8 @@ internal sealed class PipelineOptions
                 result.AddError($"--btb takes a power of two up to 65536, not {entries}.");
             }
         });
+        _instructionCache.Validators.Add(MustBeACache);
+        _dataCache.Validators.Add(MustBeACache);
         _mulDiv.Validators.Add(result =>
         {
             if (NumberOf(result) is { } cycles && cycles is < 1 or > PipelineConfig.MaxMulDivCycles)
@@ -79,6 +94,14 @@ internal sealed class PipelineOptions
         });
     }
 
+    private static void MustBeACache(OptionResult result)
+    {
+        if (result.Tokens.Count == 1 && !SwitchNames.TryParseCache(result.Tokens[0].Value, out _, out var problem))
+        {
+            result.AddError(problem!);
+        }
+    }
+
     public void AddTo(Command command)
     {
         command.Add(_hazards);
@@ -86,6 +109,8 @@ internal sealed class PipelineOptions
         command.Add(_predictor);
         command.Add(_btb);
         command.Add(_mulDiv);
+        command.Add(_instructionCache);
+        command.Add(_dataCache);
     }
 
     /// <summary>The one configuration the switches describe; a switch that was not given has its default.</summary>
@@ -105,7 +130,13 @@ internal sealed class PipelineOptions
                 : standard.Predictor,
             BtbEntries = parse.GetValue(_btb),
             MulDivCycles = parse.GetValue(_mulDiv),
+            InstructionCache = CacheOf(parse.GetValue(_instructionCache)),
+            DataCache = CacheOf(parse.GetValue(_dataCache)),
         };
+
+        // The validator has already refused what cannot be read.
+        static CacheConfig? CacheOf(string? text) =>
+            text is not null && SwitchNames.TryParseCache(text, out var cache, out _) ? cache : null;
     }
 
     /// <summary>
@@ -125,7 +156,7 @@ internal sealed class PipelineOptions
 
     /// <summary>Whether any of the switches was given on the command line.</summary>
     public bool AnyGiven(CommandResult command) =>
-        new Option[] { _hazards, _branch, _predictor, _btb, _mulDiv }.Any(option => command.GetResult(option) is { Implicit: false });
+        new Option[] { _hazards, _branch, _predictor, _btb, _mulDiv, _instructionCache, _dataCache }.Any(option => command.GetResult(option) is { Implicit: false });
 
     /// <summary>
     /// A configuration as the switches that give it, leaving out those at their defaults:
@@ -158,6 +189,16 @@ internal sealed class PipelineOptions
         if (config.MulDivCycles != standard.MulDivCycles)
         {
             given.Add("--muldiv " + config.MulDivCycles.ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (config.InstructionCache is not null)
+        {
+            given.Add("--icache " + SwitchNames.Of(config.InstructionCache));
+        }
+
+        if (config.DataCache is not null)
+        {
+            given.Add("--dcache " + SwitchNames.Of(config.DataCache));
         }
 
         return string.Join(' ', given);

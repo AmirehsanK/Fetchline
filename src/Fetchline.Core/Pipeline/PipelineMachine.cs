@@ -142,8 +142,7 @@ public sealed class PipelineMachine
             // The address is looked up as the instruction arrives, before anything knows whether
             // the access is one the machine allows: a miss and a fault are found side by side.
             var access = dataCache.Access(_exMem.Alu);
-            _events?.Add(new CacheEvent(
-                _exMem.Seq, CacheKind.Data, _exMem.Alu, access.Hit, access.Set, access.Way, access.Tag, access.Evicted, access.EvictedTag));
+            _events?.Add(Said(_exMem.Seq, CacheKind.Data, _exMem.Alu, dataCache.Config, access));
             _exMem = _exMem with { Looked = true, Wait = access.Hit ? 0 : dataCache.Config.MissPenalty };
         }
 
@@ -405,9 +404,7 @@ public sealed class PipelineMachine
                 if (_instructionCache is { } instructionCache)
                 {
                     var access = instructionCache.Access(_pc);
-                    _events?.Add(new CacheEvent(
-                        fetching.Seq, CacheKind.Instruction, _pc, access.Hit, access.Set, access.Way, access.Tag, access.Evicted,
-                        access.EvictedTag));
+                    _events?.Add(Said(fetching.Seq, CacheKind.Instruction, _pc, instructionCache.Config, access));
                     _fetchWait = access.Hit ? 0 : instructionCache.Config.MissPenalty;
                     _fetchWaited = !access.Hit;
                 }
@@ -556,6 +553,11 @@ public sealed class PipelineMachine
 
         return record;
     }
+
+    /// <summary>An access to a cache as an event, with blocks named by where they begin.</summary>
+    private static CacheEvent Said(ulong seq, CacheKind kind, uint address, CacheConfig config, CacheAccess access) => new(
+        seq, kind, address, access.Hit, access.Set, access.Way, config.AddressOf(access.Tag, access.Set), access.Evicted,
+        access.Evicted ? config.AddressOf(access.EvictedTag, access.Set) : 0);
 
     /// <summary>
     /// The forwarding unit, for one operand of the instruction in EX. The newest value of a

@@ -255,10 +255,10 @@ public static class JsonTrace
                 json.WriteBoolean("hit", access.Hit);
                 json.WriteNumber("set", access.Set);
                 json.WriteNumber("way", access.Way);
-                json.WriteString("tag", Hex(access.Tag));
+                json.WriteString("block", Hex(access.Block));
                 if (access.Evicted)
                 {
-                    json.WriteString("evictedTag", Hex(access.EvictedTag));
+                    json.WriteString("evictedBlock", Hex(access.EvictedBlock));
                 }
 
                 break;

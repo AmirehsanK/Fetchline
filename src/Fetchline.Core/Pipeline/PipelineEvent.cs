@@ -254,10 +254,12 @@ public enum CacheKind : byte
 /// from the records like everything else.
 /// </summary>
 /// <param name="Seq">The instruction that asked.</param>
+/// <param name="Address">The address asked for.</param>
 /// <param name="Way">The way the block was found in, or was brought into.</param>
-/// <param name="Evicted">A block was put out to make room, and <paramref name="EvictedTag"/> is its tag.</param>
+/// <param name="Block">The address of the first byte of the block the address is in.</param>
+/// <param name="Evicted">A block was put out to make room, and <paramref name="EvictedBlock"/> is where it began.</param>
 public sealed record CacheEvent(
-    ulong Seq, CacheKind Kind, uint Address, bool Hit, int Set, int Way, uint Tag, bool Evicted, uint EvictedTag)
+    ulong Seq, CacheKind Kind, uint Address, bool Hit, int Set, int Way, uint Block, bool Evicted, uint EvictedBlock)
     : PipelineEvent(Seq)
 {
     public override void AddTo(ref TraceHash hash)
@@ -269,8 +271,8 @@ public sealed record CacheEvent(
         hash.Add(Hit);
         hash.Add((uint)Set);
         hash.Add((uint)Way);
-        hash.Add(Tag);
+        hash.Add(Block);
         hash.Add(Evicted);
-        hash.Add(EvictedTag);
+        hash.Add(EvictedBlock);
     }
 }

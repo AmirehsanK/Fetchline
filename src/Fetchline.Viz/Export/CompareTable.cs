@@ -61,9 +61,26 @@ public static class CompareTable
             .Where(row => row is { IsRight: true, Ended: true, Stopped: not StopReason.Fault })
             .MinBy(row => row.Stats.Cycles);
         var wrong = rows.FirstOrDefault(row => !row.IsRight);
-        if ((right is not null && rows.Count > 1) || wrong is not null)
+        // The caches are the same in every row, so they are said once, as they would be typed.
+        var caches = new List<string>(2);
+        if (rows[0].Config.InstructionCache is { } instructions)
+        {
+            caches.Add(messages.NameOf(CacheKind.Instruction) + " " + SwitchNames.Of(instructions));
+        }
+
+        if (rows[0].Config.DataCache is { } data)
+        {
+            caches.Add(messages.NameOf(CacheKind.Data) + " " + SwitchNames.Of(data));
+        }
+
+        if ((right is not null && rows.Count > 1) || wrong is not null || caches.Count > 0)
         {
             lines.Add(new CompareLine(string.Empty));
+        }
+
+        if (caches.Count > 0)
+        {
+            lines.Add(new CompareLine(" " + messages.EachWith(string.Join(", ", caches))));
         }
 
         if (right is not null && rows.Count > 1)

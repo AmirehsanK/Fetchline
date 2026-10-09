@@ -47,6 +47,16 @@ public static class Counters
         Part(lines, messages.TakenHeading, stats.BranchesTaken);
         Part(lines, messages.WrongGuessesHeading, stats.Mispredictions);
 
+        // A cache that was never asked is one the pipeline does not have.
+        foreach (var kind in Enum.GetValues<CacheKind>())
+        {
+            if (stats.CacheAccesses(kind) > 0)
+            {
+                lines.Add(new Counter(
+                    messages.CacheMissesHeading(kind), Number(stats.CacheMisses(kind)) + "/" + Number(stats.CacheAccesses(kind))));
+            }
+        }
+
         lines.Add(new Counter(messages.LoadsHeading, Number(stats.Loads)));
         lines.Add(new Counter(messages.StoresHeading, Number(stats.Stores)));
         if (stats.Traps > 0)

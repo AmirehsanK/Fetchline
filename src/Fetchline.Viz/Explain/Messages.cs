@@ -42,6 +42,25 @@ public interface IMessages
     /// <summary>A multiply or divide keeps EX for another cycle, and what is behind it waits.</summary>
     string MultiCycle(string instruction, string stage, int remaining);
 
+    /// <summary>
+    /// An instruction asked a cache for a block that was not there, and waits for it.
+    /// </summary>
+    /// <param name="block">The address of the block.</param>
+    /// <param name="replaced">The address of the block it is brought in over, or null when a way was empty.</param>
+    string CacheMiss(CacheKind kind, string instruction, string stage, string block, int cycles, string? replaced);
+
+    /// <summary>What a cache is called.</summary>
+    string NameOf(CacheKind kind);
+
+    /// <summary>Under a trace: how often a cache was asked and how often it did not have the block.</summary>
+    string CacheSummary(string cache, int accesses, int misses);
+
+    /// <summary>Under a comparison whose every row has caches: which, described as they are typed.</summary>
+    string EachWith(string caches);
+
+    /// <summary>The label of the counter of a cache's misses, which is shown as misses out of accesses.</summary>
+    string CacheMissesHeading(CacheKind kind);
+
     /// <summary>An operand was taken from a latch: <c>MEM/WB -> EX.A   x4 from lw</c>.</summary>
     string Forwarded(string latch, string stage, string operand, string register, string producer);
 
@@ -381,6 +400,21 @@ public sealed class EnglishMessages : IMessages
     public string MultiCycle(string instruction, string stage, int remaining) =>
         $"multi-cycle: {instruction} ({stage}) needs {Count(remaining, "more cycle", "more cycles")}; what is behind it waits";
 
+    public string CacheMiss(CacheKind kind, string instruction, string stage, string block, int cycles, string? replaced) =>
+        $"{NameOf(kind)} miss: {instruction} ({stage}) waits {Count(cycles, "cycle")} for the block at {block}"
+        + (kind == CacheKind.Data ? "; what is behind it waits too" : string.Empty)
+        + (replaced is null ? string.Empty : $"; the block at {replaced} is put out");
+
+    public string NameOf(CacheKind kind) => kind == CacheKind.Instruction ? "instruction cache" : "data cache";
+
+    public string CacheSummary(string cache, int accesses, int misses) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"{cache}: {Count(accesses, "access", "accesses")}, {Count(misses, "miss", "misses")} ({Rate(accesses, misses):0.0}%)");
+
+    public string EachWith(string caches) => $"each with {caches}";
+
+    public string CacheMissesHeading(CacheKind kind) => NameOf(kind) + " misses";
+
     public string Forwarded(string latch, string stage, string operand, string register, string producer) =>
         $"{latch} -> {stage}.{operand}   {register} from {producer}";
 
@@ -654,6 +688,8 @@ public sealed class EnglishMessages : IMessages
         $"{Count(instructions, "instruction")}; fewest cycles with the right answer: {configuration} ({cycles.ToString(CultureInfo.InvariantCulture)})";
 
     public string WrongWith(string configuration, string firstWrongValue) => $"{configuration}: {firstWrongValue}";
+
+    private static double Rate(int accesses, int misses) => accesses == 0 ? 0 : 100.0 * misses / accesses;
 
     private static string Count(long number, string one, string? many = null) => string.Create(
         CultureInfo.InvariantCulture, $"{number} {(number == 1 ? one : many ?? one + "s")}");
