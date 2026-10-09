@@ -31,15 +31,15 @@
         <p class="stair-legend">
             @if (_grid.HasHeld)
             {
-                <span><span class="inverse">ID</span> @Messages.HeldLegend</span>
+                <span><bdi dir="ltr"><span class="inverse">ID</span></bdi> @Messages.HeldLegend</span>
             }
             @if (_grid.HasSquashed)
             {
-                <span><span class="squashed">ID</span> -- @Messages.ThrownAwayLegend</span>
+                <span><bdi dir="ltr"><span class="squashed">ID</span> --</bdi> @Messages.ThrownAwayLegend</span>
             }
             @if (_grid.Arrows.Count > 0)
             {
-                <span>EX<span class="wire">──┐</span> @Messages.ForwardedLegend</span>
+                <span><bdi dir="ltr">EX<span class="wire">──┐</span></bdi> @Messages.ForwardedLegend</span>
             }
         </p>
     }

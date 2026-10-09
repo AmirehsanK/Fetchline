@@ -241,7 +241,7 @@ body {
 }
 
 .status-end {
-    margin-left: auto;
+    margin-inline-start: auto;
 }
 
 /* Something said for the moment: that a link was copied, or could not be read. */
@@ -264,7 +264,7 @@ body {
 }
 
 .switch-title {
-    margin-right: 0.5ch;
+    margin-inline-end: 0.5ch;
     color: var(--dim);
 }
 
@@ -392,7 +392,7 @@ body {
 .pane-title {
     position: absolute;
     top: -0.55lh;
-    left: 1.5ch;
+    inset-inline-start: 1.5ch;
     margin: 0;
     padding: 0 1ch;
     background: var(--unlit);
@@ -706,7 +706,7 @@ body {
 }
 
 .counter.part dt {
-    padding-left: 2ch;
+    padding-inline-start: 2ch;
 }
 
 /* ---- The hazard log -------------------------------------------------------------------------------- */
@@ -737,22 +737,38 @@ body {
 }
 
 /*
-    A line is a button that goes to its cycle. A long sentence wraps under itself, clear of the
-    two columns before it.
+    A line is a button that goes to its cycle: the cycle, the kind of thing, the sentence. They
+    are three columns, so a long sentence wraps under itself, clear of the two before it, and
+    in a language written from the right the columns run from the right.
 */
 .log-line {
-    display: block;
+    display: flex;
+    gap: 1ch;
     width: 100%;
-    padding: 0 0 0 var(--log-indent, 0);
+    padding: 0;
     border: 0;
     background: none;
     color: inherit;
     font: inherit;
-    text-align: left;
-    text-indent: calc(-1 * var(--log-indent, 0));
+    text-align: start;
     text-shadow: inherit;
-    white-space: pre-wrap;
     cursor: pointer;
+}
+
+.log-cycle {
+    flex: none;
+    width: calc(var(--log-cycle, 3ch) + 1ch);
+}
+
+.log-kind {
+    flex: none;
+    width: 8ch;
+}
+
+.log-text {
+    flex: 1;
+    min-width: 0;
+    white-space: pre-wrap;
 }
 
 .log-line:hover {
@@ -816,7 +832,7 @@ body {
 .examples {
     position: absolute;
     top: -0.6lh;
-    right: 1.5ch;
+    inset-inline-end: 1.5ch;
     max-width: 55%;
 }
 
@@ -1016,7 +1032,7 @@ body {
 
 /* A soft key is the name of a function key and, lit beside it, what the key does now. */
 .softkey-fn {
-    margin-right: 0.5ch;
+    margin-inline-end: 0.5ch;
     color: var(--dim);
 }
 
@@ -1090,7 +1106,7 @@ body {
 }
 
 .fault .reload {
-    margin-left: 2ch;
+    margin-inline-start: 2ch;
     color: inherit;
     font-weight: 700;
 }
@@ -1226,6 +1242,39 @@ body {
         padding: 13px 13px 12px;
         font-size: 11.5px;
     }
+}
+
+/* ---- A language written from the right -------------------------------------------------------- */
+
+/*
+    The page turns round: the source is on the right, sentences begin there, and a row of keys
+    runs from there. What is a diagram, a listing or a dump does not turn: time still runs from
+    left to right across the pipeline, and code and hex are read the way they are written.
+    The lettering on the case is the case's own and stays as it was moulded.
+
+    Persian is set in Vazirmatn or Sahel where the reader has one of them, and otherwise in
+    whatever face the system gives its own interface; a terminal's face has no Persian letters
+    worth reading. Whatever keeps its direction keeps the monospaced face too.
+*/
+:root[dir="rtl"] .glass {
+    font-family: Vazirmatn, Sahel, "Segoe UI", Tahoma, var(--mono);
+}
+
+:root[dir="rtl"] :is(.staircase, .datapath, .editor, .problems, .register-grid, .dump, .console, .compare, .timeline input, .switch .tab, .status > .inverse, .boot, .softkey-fn),
+:root[dir="rtl"] .chin {
+    direction: ltr;
+    font-family: var(--mono);
+}
+
+:root[dir="rtl"] :is(.staircase, .datapath, .editor, .problems, .dump, .console, .compare) {
+    text-align: left;
+}
+
+/* Under a diagram, the legend and what is said about a wire are sentences again. */
+:root[dir="rtl"] :is(.stair-legend, .compare-foot) {
+    direction: rtl;
+    font-family: inherit;
+    text-align: right;
 }
 
 /* ---- Plain display: every effect off ----------------------------------------------------------- */

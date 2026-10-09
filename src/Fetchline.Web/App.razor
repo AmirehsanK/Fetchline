@@ -102,7 +102,8 @@
     private const int SettleMilliseconds = 400;
     private const int NoticeMilliseconds = 6000;
 
-    private static readonly IMessages Messages = EnglishMessages.Instance;
+    // The language the tube speaks: the one the switch on the monitor is at.
+    private IMessages Messages = EnglishMessages.Instance;
 
     private Session _session = default!;
     private SourceView _source = default!;
@@ -142,6 +143,7 @@
     /// </summary>
     protected override void OnInitialized()
     {
+        Messages = Languages.For(Page.Invoke<string>("fetchlineLanguage.read"));
         var fragment = Page.Invoke<string>("fetchlineLink.read");
         if (fragment.Length <= 1)
         {
@@ -169,10 +171,23 @@
         _self = DotNetObjectReference.Create(this);
         await Js.InvokeVoidAsync("fetchlineKeys.listen", _self);
         await Js.InvokeVoidAsync("fetchlineLink.listen", _self);
+        await Js.InvokeVoidAsync("fetchlineLanguage.listen", _self);
         if (_openAt > 0)
         {
             _ = Go(until: _openAt);
         }
+    }
+
+    /// <summary>
+    /// Called by the page when the language switch is moved. Nothing about the run changes:
+    /// the same cycle is on screen, said in the other language.
+    /// </summary>
+    [JSInvokable]
+    public void Speaks(string language)
+    {
+        Messages = Languages.For(language);
+        _notice = string.Empty;
+        StateHasChanged();
     }
 
     /// <summary>

@@ -313,7 +313,14 @@ running again from reset, which gives the same run because the machine has no ot
   for (in the playground, the last 120); a trace covers every cycle. The PNG is the SVG drawn
   by the browser at twice its size, so only the playground makes one.
 - Every string comes from a typed catalog, so a message missing from one language does not
-  compile. Diagrams stay left to right in Persian.
+  compile. The `LANGUAGE` switch on the monitor chooses between English and Persian and is
+  remembered with the display's other settings; moving it changes what is said and nothing
+  about the run. In Persian the page runs from the right: the source is on the right, sentences
+  and rows of keys begin there. Diagrams stay left to right, and so does everything that is a
+  listing or a dump: the source, the registers, memory, the console, the comparison table and
+  the timeline. Stage names, mnemonics, register names and the words the command line takes
+  stay as they are, and numbers keep the digits the diagrams use. The comparison table is plain
+  text in columns, so its headings stay the command line's terms in Persian too.
 
 ### 8.3 The look: an old-school computer display
 
@@ -345,9 +352,11 @@ computer, not as a modern web app.
   is nothing to skip, and a later visit with the engine cached hardly sees it.
 - **Rules that keep it usable:** a "plain display" switch turns every effect off;
   `prefers-reduced-motion` turns off flicker and blinking; text contrast stays at WCAG AA on each
-  phosphor colour; nothing is conveyed by an effect alone. Persian text uses Sahel or Vazirmatn,
-  because retro bitmap faces have no Persian glyphs, while code, registers and diagrams keep the
-  monospace face.
+  phosphor colour; nothing is conveyed by an effect alone. Persian text uses Sahel or Vazirmatn
+  where the reader has one of them installed, and otherwise the face the system gives its own
+  interface, because retro bitmap faces have no Persian glyphs, while code, registers and
+  diagrams keep the monospace face. Neither face is shipped with the page: bundling one is a
+  download, and so the owner's decision.
 - The look is one stylesheet of tokens (colours, glow, scanline strength), so it does not leak
   into the engine or `Fetchline.Viz`. A test reads it and holds it to the rules above: each
   phosphor's normal, dim and bright text at 4.5 to 1 or better against its unlit glass, every
@@ -487,7 +496,7 @@ link opened in a fresh profile shows the same cycle and the same numbers.
 the live site is checked by hand in both languages and a Kanata file opens in Konata.
 
 - [x] 9.1 Exports: the trace as JSON and as Kanata, the staircase as SVG and PNG
-- [ ] 9.2 The Persian catalog, and a right-to-left page whose diagrams stay left to right
+- [x] 9.2 The Persian catalog, and a right-to-left page whose diagrams stay left to right
 - [ ] 9.3 The README with real screenshots, and `docs/CPU.md` complete
 - [ ] 9.4 The Pages workflow (switching Pages on is the owner's decision)
 - [ ] 9.5 The live site checked by hand in both languages; a Kanata file opened in Konata

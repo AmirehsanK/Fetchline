@@ -15,12 +15,16 @@
         }
         else
         {
-            <ol class="log-lines" style="--log-indent: @(_cycleWidth + 2 + 8 + 1)ch">
+            <ol class="log-lines" style="--log-cycle: @(_cycleWidth)ch">
                 @foreach (var line in _lines)
                 {
                     <li>
                         <button type="button" class="@Style(line)" aria-current="@(line.Cycle == Session.Cycle ? "true" : null)"
-                                @onclick="() => OnSeek.InvokeAsync(line.Cycle)">@Text(line)</button>
+                                @onclick="() => OnSeek.InvokeAsync(line.Cycle)">
+                            <span class="log-cycle">@("c" + line.Cycle.ToString(CultureInfo.InvariantCulture))</span>
+                            <span class="log-kind">@Kind(line)</span>
+                            <span class="log-text">@line.Text</span>
+                        </button>
                     </li>
                 }
             </ol>
@@ -36,6 +40,7 @@
     private ElementReference _scroller;
     private List<LogLine> _lines = [];
     private Session? _listedFor;
+    private IMessages? _listedIn;
     private ulong _listedAt = ulong.MaxValue;
     private ulong _listedTo = ulong.MaxValue;
     private int _cycleWidth = 2;
@@ -56,12 +61,13 @@
 
     protected override void OnParametersSet()
     {
-        if (ReferenceEquals(_listedFor, Session) && _listedAt == Session.Cycle && _listedTo == Session.Frontier)
+        if (ReferenceEquals(_listedFor, Session) && ReferenceEquals(_listedIn, Messages) && _listedAt == Session.Cycle
+            && _listedTo == Session.Frontier)
         {
             return;
         }
 
-        (_listedFor, _listedAt, _listedTo, _follow) = (Session, Session.Cycle, Session.Frontier, true);
+        (_listedFor, _listedIn, _listedAt, _listedTo, _follow) = (Session, Messages, Session.Cycle, Session.Frontier, true);
         if (Session.Program is null || Labels is null)
         {
             _lines = [];
@@ -91,9 +97,8 @@
         : "log-line";
 
     // The same columns as the terminal's trace: the cycle, the kind of thing, the sentence.
-    private string Text(LogLine line)
-    {
-        var kind = line.Kind switch
+    private string Kind(LogLine line) =>
+        line.Kind switch
         {
             LogKind.Stall => Messages.Stall,
             LogKind.Forward => Messages.Forward,
@@ -101,6 +106,4 @@
             LogKind.Wrong => Messages.Wrong,
             _ => Messages.Trap,
         };
-        return ("c" + line.Cycle.ToString(CultureInfo.InvariantCulture)).PadRight(_cycleWidth) + "  " + kind.PadRight(8) + " " + line.Text;
-    }
 }

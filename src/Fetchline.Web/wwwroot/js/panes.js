@@ -175,3 +175,17 @@ window.fetchlineExport = (function () {
         },
     };
 })();
+
+window.fetchlineLanguage = {
+    // The language the page is in: the one its switch was left at.
+    read: function () {
+        return window.fetchlineDisplay.read().language;
+    },
+
+    // Tells the listener when the switch on the chin is moved.
+    listen: function (listener) {
+        window.addEventListener('fetchline-language', function (event) {
+            listener.invokeMethodAsync('Speaks', event.detail);
+        });
+    },
+};

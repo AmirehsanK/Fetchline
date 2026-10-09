@@ -36,11 +36,7 @@ public static class CompareTable
             return lines;
         }
 
-        string[] headings =
-        [
-            messages.HazardsHeading, messages.BranchHeading, messages.PredictorHeading, messages.CyclesHeading,
-            messages.CpiHeading, messages.StallsHeading, messages.SquashedHeading, messages.WrongGuessesHeading,
-        ];
+        var headings = Enum.GetValues<TableColumn>().Select(messages.ColumnHeading).ToArray();
         var cells = rows.Select(row => Cells(row, messages)).ToList();
         var widths = Enumerable.Range(0, headings.Length)
             .Select(column => Math.Max(headings[column].Length, cells.Max(row => row[column].Length)))

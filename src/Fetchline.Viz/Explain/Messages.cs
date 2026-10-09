@@ -244,13 +244,20 @@ public interface IMessages
     /// <summary>The two machines ran different instructions.</summary>
     string WrongInstruction(string pipeline, string reference);
 
-    /// <summary>The heading of the comparison table's column for how data hazards are handled.</summary>
+    /// <summary>
+    /// The heading of a column of the comparison table. The table is plain text in columns, in
+    /// a terminal as on the page, so a heading has to be made of characters that are each one
+    /// cell wide: a language whose script is not keeps the terms the command line uses.
+    /// </summary>
+    string ColumnHeading(TableColumn column);
+
+    /// <summary>The name of the switch for how data hazards are handled.</summary>
     string HazardsHeading { get; }
 
-    /// <summary>The heading of the column for the stage that decides branches.</summary>
+    /// <summary>The name of the switch for the stage that decides branches.</summary>
     string BranchHeading { get; }
 
-    /// <summary>The heading of the column for the predictor.</summary>
+    /// <summary>The name of the switch for the predictor.</summary>
     string PredictorHeading { get; }
 
     /// <summary>The name of the switch for the size of the branch target buffer.</summary>
@@ -266,16 +273,19 @@ public interface IMessages
 
     string CpiHeading { get; }
 
-    /// <summary>The heading of the column for cycles in which an instruction was made to wait.</summary>
+    /// <summary>The label of the counter of cycles in which an instruction was made to wait.</summary>
     string StallsHeading { get; }
 
-    /// <summary>The heading of the column for instructions fetched and then thrown away.</summary>
+    /// <summary>The label of the counter of instructions fetched and then thrown away.</summary>
     string SquashedHeading { get; }
 
-    /// <summary>The heading of the column for branches and jumps that fetch had not followed.</summary>
+    /// <summary>The label of the counter of branches and jumps that fetch had not followed.</summary>
     string WrongGuessesHeading { get; }
 
-    /// <summary>How many of the branches and jumps decided were guessed wrong: <c>9 of 10</c>.</summary>
+    /// <summary>
+    /// In a cell of the comparison table, how many of the branches and jumps decided were
+    /// guessed wrong: <c>9 of 10</c>. Like a heading there, it is made of characters one cell wide.
+    /// </summary>
     string Guesses(int wrong, int decided);
 
     /// <summary>The label of the counter of instructions that completed.</summary>
@@ -318,9 +328,34 @@ public interface IMessages
     string WrongWith(string configuration, string firstWrongValue);
 }
 
+/// <summary>The columns of the comparison table.</summary>
+public enum TableColumn : byte
+{
+    Hazards,
+    Branch,
+    Predictor,
+    Cycles,
+    Cpi,
+    Stalls,
+    Squashed,
+    WrongGuesses,
+}
+
 public sealed class EnglishMessages : IMessages
 {
     public static EnglishMessages Instance { get; } = new();
+
+    public string ColumnHeading(TableColumn column) => column switch
+    {
+        TableColumn.Hazards => HazardsHeading,
+        TableColumn.Branch => BranchHeading,
+        TableColumn.Predictor => PredictorHeading,
+        TableColumn.Cycles => CyclesHeading,
+        TableColumn.Cpi => CpiHeading,
+        TableColumn.Stalls => StallsHeading,
+        TableColumn.Squashed => SquashedHeading,
+        _ => WrongGuessesHeading,
+    };
 
     public string Stall => "stall";
 
