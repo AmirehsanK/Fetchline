@@ -307,7 +307,11 @@ running again from reset, which gives the same run because the machine has no ot
   at once and copies it. A link pasted over the address of a page that is already open is
   followed as well. A link carries a check of its source, so one cut short in transit is
   refused, with the reason on the status line, instead of running some other program. The
-  staircase exports as SVG or PNG, the trace as JSON or Kanata.
+  staircase exports as SVG or PNG, the trace as JSON or Kanata: from the `EXPORT` menu beside
+  the timeline, which saves the run as far as the cycle on screen, and from `fetchline trace
+  --format svg|json|kanata`, with `--output` to name a file. A picture covers the cycles asked
+  for (in the playground, the last 120); a trace covers every cycle. The PNG is the SVG drawn
+  by the browser at twice its size, so only the playground makes one.
 - Every string comes from a typed catalog, so a message missing from one language does not
   compile. Diagrams stay left to right in Persian.
 
@@ -482,7 +486,7 @@ link opened in a fresh profile shows the same cycle and the same numbers.
 **M9. README with real screenshots, `docs/CPU.md`, Pages workflow, exports, Persian.** Done when
 the live site is checked by hand in both languages and a Kanata file opens in Konata.
 
-- [ ] 9.1 Exports: the trace as JSON and as Kanata, the staircase as SVG and PNG
+- [x] 9.1 Exports: the trace as JSON and as Kanata, the staircase as SVG and PNG
 - [ ] 9.2 The Persian catalog, and a right-to-left page whose diagrams stay left to right
 - [ ] 9.3 The README with real screenshots, and `docs/CPU.md` complete
 - [ ] 9.4 The Pages workflow (switching Pages on is the owner's decision)

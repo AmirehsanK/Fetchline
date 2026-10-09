@@ -1,8 +1,11 @@
 using System.CommandLine;
+using Fetchline.Core.Asm;
 using Fetchline.Core.Pipeline;
 using Fetchline.Core.Trace;
 using Fetchline.Viz.Explain;
+using Fetchline.Viz;
 using Fetchline.Viz.Export;
+using Fetchline.Viz.Staircase;
 
 namespace Fetchline.Cli.Commands;
 
@@ -29,11 +32,19 @@ internal static class TraceCommand
             Description = "Stop after this many cycles, in case the program never ends.",
             DefaultValueFactory = _ => DefaultBudget,
         };
+        var format = new Option<string>("--format")
+        {
+            Description = "What to write: the diagram as text or as an svg picture of the cycles asked for, "
+                + "or every cycle run as json or as a kanata log for Konata.",
+            DefaultValueFactory = _ => "text",
+        };
+        format.AcceptOnlyFromAmong("text", "svg", "json", "kanata");
+        var output = new Option<FileInfo?>("--output", "-o") { Description = "The file to write it to, in place of the terminal." };
         var switches = new PipelineOptions();
 
         var command = new Command("trace", "Run a program on the pipeline and draw what each cycle did.")
         {
-            file, from, cycles, noLog, budget,
+            file, from, cycles, noLog, budget, format, output,
         };
         switches.AddTo(command);
 
@@ -64,7 +75,21 @@ internal static class TraceCommand
                 Cycles = parse.GetValue(cycles),
                 Log = !parse.GetValue(noLog),
             };
-            stdout.Write(AsciiTrace.Write(program, records, EnglishMessages.Instance, options, lockstep.Divergence));
+            var written = parse.GetValue(format) switch
+            {
+                "json" => JsonTrace.Write(program, config, records),
+                "kanata" => KanataTrace.Write(program, records),
+                "svg" => Picture(program, records, options, parse.GetValue(file)!.Name),
+                _ => AsciiTrace.Write(program, records, EnglishMessages.Instance, options, lockstep.Divergence),
+            };
+            if (parse.GetValue(output) is { } target)
+            {
+                File.WriteAllText(target.FullName, written);
+            }
+            else
+            {
+                stdout.Write(written);
+            }
 
             // With its hazard handling off the pipeline is meant to go wrong, and saying where is
             // the point. Built any other way, a difference is a fault in this program.
@@ -93,5 +118,15 @@ internal static class TraceCommand
         });
 
         return command;
+    }
+
+    /// <summary>The diagram of the cycles asked for, with the forwards drawn in, as an SVG.</summary>
+    private static string Picture(Program program, List<CycleRecord> records, TraceOptions options, string name)
+    {
+        var last = records.Count == 0 ? 0 : records[^1].Cycle;
+        var from = Math.Max(1, options.From);
+        var to = options.Cycles == 0 ? last : Math.Min(last, from + options.Cycles - 1);
+        var grid = StaircaseGrid.Build(records, new InstructionLabels(program), from, to);
+        return StaircaseSvg.Write(grid, name);
     }
 }

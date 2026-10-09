@@ -129,3 +129,49 @@ window.fetchlineStaircase = (function () {
         },
     };
 })();
+
+window.fetchlineExport = (function () {
+    'use strict';
+
+    // Hands the reader a file, as a link that is followed and then forgotten.
+    function download(name, blob) {
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(function () {
+            URL.revokeObjectURL(link.href);
+        }, 1000);
+    }
+
+    return {
+        save: function (name, type, text) {
+            download(name, new Blob([text], { type: type }));
+        },
+
+        // The picture arrives as an SVG and is drawn onto a canvas at twice its size, so that
+        // its letters are sharp on a screen with small dots.
+        savePicture: function (name, type, svg) {
+            var source = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+            var image = new Image();
+            image.onload = function () {
+                var canvas = document.createElement('canvas');
+                canvas.width = image.naturalWidth * 2;
+                canvas.height = image.naturalHeight * 2;
+                canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(source);
+                canvas.toBlob(function (blob) {
+                    if (blob) {
+                        download(name, blob);
+                    }
+                }, type);
+            };
+            image.onerror = function () {
+                URL.revokeObjectURL(source);
+            };
+            image.src = source;
+        },
+    };
+})();

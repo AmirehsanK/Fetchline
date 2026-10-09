@@ -1,6 +1,7 @@
 using System.Globalization;
 using Fetchline.Core.Pipeline;
 using Fetchline.Viz.Datapath;
+using Fetchline.Viz.Export;
 
 namespace Fetchline.Viz.Explain;
 
@@ -154,6 +155,11 @@ public interface IMessages
 
     /// <summary>Under the datapath: how to read it.</summary>
     string DatapathHint { get; }
+
+    /// <summary>The menu that saves the run as a file, and what each thing in it is called.</summary>
+    string ExportMenu { get; }
+
+    string NameOf(ExportKind kind);
 
     /// <summary>The key that makes a link to what is on screen.</summary>
     string ShareKey { get; }
@@ -460,6 +466,16 @@ public sealed class EnglishMessages : IMessages
     public string WireIdle(string signal) => $"{signal}: not used this cycle";
 
     public string DatapathHint => "Bright wires are the ones in use this cycle. Point at one for its value.";
+
+    public string ExportMenu => "EXPORT";
+
+    public string NameOf(ExportKind kind) => kind switch
+    {
+        ExportKind.Json => "the trace as JSON",
+        ExportKind.Kanata => "the trace as a Kanata log",
+        ExportKind.Svg => "the diagram as SVG",
+        _ => "the diagram as PNG",
+    };
 
     public string ShareKey => "SHARE";
 

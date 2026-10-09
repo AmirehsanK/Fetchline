@@ -3,6 +3,7 @@
 @using Fetchline.Core.Trace
 @using Fetchline.Viz.Editor
 @using Fetchline.Viz.Explain
+@using Fetchline.Viz.Export
 @inject IJSRuntime Js
 
 @*
@@ -26,6 +27,14 @@
                style="--at: @(Fraction())%" disabled="@(_session.Frontier == 0)" aria-label="@Messages.Timeline"
                @oninput="Scrub" />
         <span class="dim">@Messages.TimelineRun(_session.Frontier)</span>
+        @* The menu saves the run as a file and goes back to saying only that it is the menu. *@
+        <select class="menu" @key="_exported" aria-label="@Messages.ExportMenu" disabled="@(_session.Cycle == 0)" @onchange="Export">
+            <option value="" selected>@Messages.ExportMenu</option>
+            @foreach (var kind in Enum.GetValues<ExportKind>())
+            {
+                <option value="@kind">@Messages.NameOf(kind)</option>
+            }
+        </select>
     </div>
 
     <SourcePane View="_source" Record="_session.Record" Messages="Messages" OnEdit="Edit" />
@@ -387,6 +396,24 @@
     }
 
     private void Faster() => _pace = _pace.Next();
+
+    // How many files have been saved: the key of the menu, so that each choice leaves a new
+    // menu behind it.
+    private int _exported;
+
+    /// <summary>Hands the reader the run as a file of the kind chosen from the menu.</summary>
+    private async Task Export(ChangeEventArgs change)
+    {
+        _exported++;
+        if (!Enum.TryParse<ExportKind>(change.Value as string, out var kind)
+            || SessionExport.Make(_session, kind, Messages) is not { } file)
+        {
+            return;
+        }
+
+        Halt();
+        await Js.InvokeVoidAsync(kind == ExportKind.Png ? "fetchlineExport.savePicture" : "fetchlineExport.save", file.Name, file.MediaType, file.Text);
+    }
 
     // The handle of the timeline has been moved to a cycle.
     private void Scrub(ChangeEventArgs change)

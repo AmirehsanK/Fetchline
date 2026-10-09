@@ -818,6 +818,11 @@ body {
     top: -0.6lh;
     right: 1.5ch;
     max-width: 55%;
+}
+
+/* A menu: the examples, and the kinds of file a run can be saved as. */
+.examples,
+.menu {
     padding: 0 0.5ch;
     border: 1px solid var(--dim);
     border-radius: 0;
@@ -829,13 +834,29 @@ body {
 }
 
 .examples:hover,
-.examples:focus-visible {
+.examples:focus-visible,
+.menu:hover:not(:disabled),
+.menu:focus-visible {
     border-color: var(--ink);
     color: var(--bright);
 }
 
+/* Closed, the menu is as wide as its own name, not as its longest line. */
+.menu {
+    flex: none;
+    width: 11ch;
+}
+
+.menu:disabled {
+    border-color: transparent;
+    color: var(--dim);
+    cursor: default;
+    opacity: 0.6;
+}
+
 /* The list a browser draws for it is the browser's own, but can at least be the tube's colours. */
-.examples option {
+.examples option,
+.menu option {
     background: var(--unlit);
     color: var(--ink);
     text-shadow: none;
