@@ -329,6 +329,15 @@ running again from reset, which gives the same run because the machine has no ot
   row and can be left half made; a configuration still running after 250,000 cycles is cut off
   and says so. The row of the configuration in use is lit, and choosing a row builds the
   pipeline that way.
+- **Caches:** two more switches, `icache` and `dcache`, each off or one of a few caches named as
+  the command line names them; a cache that came in a link and is not one of those is added to
+  its switch, so the switch can show it. While the pipeline has a cache the pane that the
+  counters, memory and the console share has a fourth name, `CACHE`: a row for each set and a
+  column for each way, and in each the address its block begins at. The way used in the cycle
+  on screen is lit, with a mark if the block had to be brought in, and in a full set the block
+  that goes next is dim. It is made from the records and steps back with them. The counters
+  gain each cache's misses out of its accesses, and a link carries both caches; one made before
+  there were caches still opens, and means none.
 - **Share and export:** a link holds the source, configuration and cycle (deflate, base64url, size
   capped and validated before use). The link is the fragment of the page's address, which follows
   what is on screen a moment behind it and never adds to the history; `F2` brings it up to date
@@ -544,7 +553,7 @@ an example shows the same loop taking fewer cycles walked one way than the other
 - [x] 10.1 The cache: sets, ways, blocks, least recently used, held to a second statement of the rules
 - [x] 10.2 Caches in the pipeline: a miss in IF, a miss in MEM, events, and lockstep on every shape
 - [x] 10.3 The command line: the switches, the sentences, the counters, the comparison
-- [ ] 10.4 The playground: the switches, what the cache holds, links that carry it
+- [x] 10.4 The playground: the switches, what the cache holds, links that carry it
 - [ ] 10.5 The example that teaches it, both languages, and `docs/CPU.md`
 
 M0 to M6 already make a complete, verified command-line tool; M7 and M8 make it something to

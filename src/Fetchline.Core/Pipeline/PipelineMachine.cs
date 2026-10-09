@@ -71,6 +71,12 @@ public sealed class PipelineMachine
     /// <summary>The registers, memory and surroundings. Its program counter is not the pipeline's.</summary>
     public Hart Hart { get; }
 
+    /// <summary>The cache in front of IF, if the pipeline has one. It is here to be looked at, by tests.</summary>
+    public Cache? InstructionCache => _instructionCache;
+
+    /// <summary>The cache in front of MEM, if the pipeline has one.</summary>
+    public Cache? DataCache => _dataCache;
+
     /// <summary>
     /// How many cycles have been run. This is the machine's own clock and numbers the records.
     /// The cycle counter a program reads is a CSR, which a program can also write; the two start

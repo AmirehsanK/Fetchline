@@ -19,7 +19,7 @@ public class SwitchBoardTests
     public void TheTextbookPipelineHasEverySwitchInItsFirstPosition()
     {
         Assert.Equal(
-            "hazards: [forwarding] stall off | branch: [ex] id | predictor: [not-taken] backward-taken 1-bit 2-bit | muldiv: [1] 3",
+            "hazards: [forwarding] stall off | branch: [ex] id | predictor: [not-taken] backward-taken 1-bit 2-bit | muldiv: [1] 3 | icache: [off] 4x1x16:10 16x1x16:10 | dcache: [off] 4x1x16:10 2x2x16:10 16x1x16:10",
             Shape(PipelineConfig.Default));
     }
 
@@ -30,7 +30,7 @@ public class SwitchBoardTests
 
         Assert.Equal(
             "hazards: [forwarding] stall off | branch: [ex] id | predictor: not-taken backward-taken 1-bit [2-bit] | " +
-            "btb: 16 [64] 256 | muldiv: [1] 3",
+            "btb: 16 [64] 256 | muldiv: [1] 3 | icache: [off] 4x1x16:10 16x1x16:10 | dcache: [off] 4x1x16:10 2x2x16:10 16x1x16:10",
             Shape(twoBit));
         Assert.Contains("btb: [16] 64 256", Shape(twoBit with { Predictor = Predictor.OneBit, BtbEntries = 16 }));
         Assert.DoesNotContain("btb", Shape(twoBit with { Predictor = Predictor.BackwardTaken }));
@@ -50,7 +50,7 @@ public class SwitchBoardTests
             Hazards = HazardHandling.StallOnly, Branches = BranchDecision.Decode, Predictor = Predictor.OneBit, BtbEntries = 256, MulDivCycles = 3,
         };
 
-        Assert.Equal("hazards: forwarding [stall] off | branch: ex [id] | predictor: not-taken backward-taken [1-bit] 2-bit | btb: 16 64 [256] | muldiv: 1 [3]", Shape(config));
+        Assert.Equal("hazards: forwarding [stall] off | branch: ex [id] | predictor: not-taken backward-taken [1-bit] 2-bit | btb: 16 64 [256] | muldiv: 1 [3] | icache: [off] 4x1x16:10 16x1x16:10 | dcache: [off] 4x1x16:10 2x2x16:10 16x1x16:10", Shape(config));
 
         foreach (var group in SwitchBoard.Of(config, Messages))
         {
@@ -92,7 +92,15 @@ public class SwitchBoardTests
         static PipelineConfig Same(PipelineConfig config) =>
             config.Predictor is Predictor.OneBit or Predictor.TwoBit ? config : config with { BtbEntries = 64 };
 
-        var distinct = reached.Select(Same).ToHashSet();
+        // The caches are two switches more, and every position of one can be had with every
+        // position of the other. Set aside, what is left is what it was before there were any.
+        var caches = reached.Select(config => (config.InstructionCache, config.DataCache)).ToHashSet();
+        Assert.Equal(SwitchBoard.InstructionCaches.Count * SwitchBoard.DataCaches.Count, caches.Count);
+        Assert.Equal(
+            SwitchBoard.InstructionCaches.SelectMany(instructions => SwitchBoard.DataCaches.Select(data => (instructions, data))).ToHashSet(),
+            caches);
+
+        var distinct = reached.Select(config => Same(config with { InstructionCache = null, DataCache = null })).ToHashSet();
         Assert.Equal(64 + 32, distinct.Count);
         Assert.Equal(Configurations.Correct.ToHashSet(), distinct.Where(config => config.IsCorrect).ToHashSet());
         Assert.Equal(32, distinct.Count(config => !config.IsCorrect));
@@ -104,7 +112,7 @@ public class SwitchBoardTests
         var groups = SwitchBoard.Of(new PipelineConfig { Predictor = Predictor.TwoBit }, Messages);
 
         // "--hazards stall", "--btb 256": the title is the option and the position its value.
-        Assert.Equal(["hazards", "branch", "predictor", "btb", "muldiv"], groups.Select(group => group.Title));
+        Assert.Equal(["hazards", "branch", "predictor", "btb", "muldiv", "icache", "dcache"], groups.Select(group => group.Title));
         Assert.Equal(SwitchNames.All<HazardHandling>(SwitchNames.Of), groups[0].Options.Select(option => option.Name));
         Assert.Equal(SwitchNames.All<BranchDecision>(SwitchNames.Of), groups[1].Options.Select(option => option.Name));
         Assert.Equal(SwitchNames.All<Predictor>(SwitchNames.Of), groups[2].Options.Select(option => option.Name));

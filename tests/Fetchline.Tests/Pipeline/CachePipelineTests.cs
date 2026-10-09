@@ -212,6 +212,9 @@ public class CachePipelineTests
         (new CacheConfig(8, 1, 16, 3), null),
         (new CacheConfig(2, 2, 8, 2), new CacheConfig(2, 1, 8, 5)),         // both, small, different penalties
         (new CacheConfig(64, 4, 32, 9), new CacheConfig(64, 4, 32, 9)),     // both, big enough to miss once
+        (new CacheConfig(4, 1, 16, 10), new CacheConfig(2, 2, 16, 10)),     // the ones the playground offers
+        (new CacheConfig(16, 1, 16, 10), new CacheConfig(4, 1, 16, 10)),
+        (null, new CacheConfig(16, 1, 16, 10)),
     ];
 
     [Fact]
@@ -269,6 +272,45 @@ public class CachePipelineTests
 
         Assert.True(failures.IsEmpty, failures.FirstOrDefault());
         Assert.True(misses > 100_000, $"only {misses} misses: the caches were hardly tried");
+    }
+
+    [Fact]
+    public void EveryPairOfCachesThePlaygroundOffersRunsInLockstepBuiltEveryCorrectWay()
+    {
+        // What can be switched to on the page is what is held to the reference machine here:
+        // every instruction cache on offer with every data cache on offer, on every correct
+        // configuration.
+        var pairs = Fetchline.Viz.SwitchBoard.InstructionCaches
+            .SelectMany(instructions => Fetchline.Viz.SwitchBoard.DataCaches.Select(data => (instructions, data))).ToList();
+        var failures = new ConcurrentQueue<string>();
+        long runs = 0;
+
+        Parallel.For(0, 40, index =>
+        {
+            var seed = Seed + 0x2000 + (ulong)index;
+            var source = ProgramGenerator.Generate(new SeededRandom(seed));
+            var program = AssemblerTesting.Assemble(source);
+            foreach (var (instructions, data) in pairs)
+            {
+                foreach (var plain in Configurations.Correct)
+                {
+                    var lockstep = new Lockstep(program, TextWriter.Null, config: plain with { InstructionCache = instructions, DataCache = data });
+                    lockstep.Pipeline.Recording = false;
+                    lockstep.Run(4 * Budget);
+                    Interlocked.Increment(ref runs);
+                    if (lockstep.Divergence is not null || !lockstep.Pipeline.IsFinished)
+                    {
+                        failures.Enqueue(
+                            $"program {index} (seed {seed:X}), {Configurations.Name(plain)}, icache {instructions}, dcache {data}: "
+                            + (lockstep.Divergence?.Describe() ?? "the pipeline did not finish") + "\n" + source);
+                        return;
+                    }
+                }
+            }
+        });
+
+        Assert.True(failures.IsEmpty, failures.FirstOrDefault());
+        Assert.Equal(40 * 12 * 64, runs);
     }
 
     [Fact]

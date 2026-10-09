@@ -20,7 +20,7 @@ public partial class LanguagesTests
     [
         nameof(IMessages.BufferHeading), nameof(IMessages.CpiHeading), nameof(IMessages.ColumnHeading),
         nameof(IMessages.WireCarries), nameof(IMessages.WireAsserted), nameof(IMessages.WrongWith),
-        nameof(IMessages.Problem), nameof(IMessages.Guesses),
+        nameof(IMessages.Problem), nameof(IMessages.Guesses), nameof(IMessages.SetHeading), nameof(IMessages.WayHeading),
     ];
 
     [GeneratedRegex(@"[؀-ۿ]")]

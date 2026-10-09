@@ -679,6 +679,11 @@ body {
     margin-bottom: 0.3lh;
 }
 
+/* Under the cache: how to read it. */
+.cache-legend {
+    margin: 0.5lh 0 0;
+}
+
 .dump,
 .console {
     white-space: pre;

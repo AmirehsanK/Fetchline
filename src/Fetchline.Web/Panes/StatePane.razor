@@ -1,3 +1,4 @@
+@using Fetchline.Core.Pipeline
 @using Fetchline.Viz.Explain
 @using Fetchline.Viz.State
 @using Microsoft.AspNetCore.Components.Rendering
@@ -8,7 +9,7 @@
 *@
 <section class="pane state" aria-label="@Title(_tab)">
     <h2 class="pane-title tabs" role="tablist">
-        @foreach (var tab in Enum.GetValues<Tab>())
+        @foreach (var tab in Tabs)
         {
             <button type="button" role="tab" class="tab @(tab == _tab ? "inverse" : null)"
                     aria-selected="@(tab == _tab ? "true" : "false")" @onclick="() => _tab = tab">@Name(tab)</button>
@@ -26,6 +27,25 @@
                     </div>
                 }
             </dl>
+        }
+        else if (_tab == Tab.Cache)
+        {
+            var kinds = CacheContents.Kinds(Session.Config);
+            var kind = kinds.Contains(_cache) ? _cache : kinds[0];
+            @if (kinds.Count > 1)
+            {
+                <div class="regions" role="group">
+                    @foreach (var each in kinds)
+                    {
+                        <button type="button" class="tab @(each == kind ? "inverse" : null)"
+                                aria-pressed="@(each == kind ? "true" : "false")"
+                                @onclick="() => _cache = each">@Messages.NameOf(each)</button>
+                    }
+                </div>
+            }
+
+            <pre class="dump">@Lines(kind)</pre>
+            <p class="dim cache-legend">@Messages.CacheLegend</p>
         }
         else if (_tab == Tab.Console)
         {
@@ -68,9 +88,25 @@
         Counters,
         Memory,
         Console,
+        Cache,
     }
 
     private Tab _tab = Tab.Counters;
+
+    // Which of the two caches is shown, when the pipeline has both.
+    private CacheKind _cache = CacheKind.Data;
+
+    // The cache has a tab only while the pipeline has a cache.
+    private IEnumerable<Tab> Tabs =>
+        Enum.GetValues<Tab>().Where(tab => tab != Tab.Cache || CacheContents.Kinds(Session.Config).Count > 0);
+
+    protected override void OnParametersSet()
+    {
+        if (_tab == Tab.Cache && CacheContents.Kinds(Session.Config).Count == 0)
+        {
+            _tab = Tab.Counters;
+        }
+    }
 
     // The region of memory chosen, by name: the regions themselves move as the stack grows.
     private string? _region;
@@ -87,11 +123,58 @@
     {
         Tab.Memory => Messages.MemoryTitle,
         Tab.Console => Messages.ConsoleTitle,
+        Tab.Cache => Messages.CacheTitle,
         _ => Messages.CountersTitle,
     };
 
     // The console's name carries a mark once there is something on it to read.
     private string Name(Tab tab) => Title(tab) + (tab == Tab.Console && Session.Output.Length > 0 ? "*" : string.Empty);
+
+    // A cache as a table of text: a row for each set, a column for each way, and in each the
+    // address its block begins at. The way used in the cycle on screen is in inverse video,
+    // with a mark after it when the block had to be brought in; the one that goes next is dim.
+    private RenderFragment Lines(CacheKind kind) => builder =>
+    {
+        var rows = CacheContents.Of(Session, kind);
+        var ways = rows.Count == 0 ? 0 : rows[0].Ways.Count;
+        var first = Math.Max(Messages.SetHeading.Length, 4);
+
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", "dim");
+        builder.AddContent(2, Messages.SetHeading.PadLeft(first)
+            + string.Concat(Enumerable.Range(0, ways).Select(way => "  " + Messages.WayHeading(way).PadRight(9))).TrimEnd() + "\n");
+        builder.CloseElement();
+
+        foreach (var row in rows)
+        {
+            builder.OpenElement(3, "span");
+            builder.AddAttribute(4, "class", "dim");
+            builder.AddContent(5, row.Set.ToString(CultureInfo.InvariantCulture).PadLeft(first));
+            builder.CloseElement();
+
+            foreach (var cell in row.Ways)
+            {
+                builder.AddContent(6, "  ");
+                var text = cell.Valid ? cell.Block.ToString("x8", CultureInfo.InvariantCulture) : "--------";
+                var style = cell.Touch != CacheTouch.None ? "inverse" : cell.NextOut || !cell.Valid ? "dim" : null;
+                if (style is null)
+                {
+                    builder.AddContent(7, text);
+                }
+                else
+                {
+                    builder.OpenElement(8, "span");
+                    builder.AddAttribute(9, "class", style);
+                    builder.AddContent(10, text);
+                    builder.CloseElement();
+                }
+
+                builder.AddContent(11, cell.Touch == CacheTouch.Miss ? "!" : " ");
+            }
+
+            builder.AddContent(12, "\n");
+        }
+    };
 
     // A hex dump: the address, eight bytes, and the same bytes as text. The bytes stored in the
     // cycle on screen are in inverse video.

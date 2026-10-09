@@ -31,6 +31,9 @@ public sealed class Session
     private readonly uint[] _registers = new uint[Core.Isa.Registers.Count];
     private readonly StringWriter _console = new();
 
+    // What each cache holds, by the kind of cache; null for one the pipeline does not have.
+    private readonly Lines?[] _caches = new Lines?[2];
+
     private Lockstep? _lockstep;
     private Memory _memory = new();
 
@@ -115,6 +118,18 @@ public sealed class Session
             var length = Cycle == 0 ? 0 : _changes[(int)(Cycle - _first)].ConsoleLength;
             return _console.GetStringBuilder().ToString(0, length);
         }
+    }
+
+    /// <summary>
+    /// One way of one set of a cache after the cycle being shown: whether it holds a block, the
+    /// address the block begins at, and the cycle it was last used in. The cache has to be one
+    /// the pipeline has.
+    /// </summary>
+    public (bool Valid, uint Block, ulong Used) CacheLine(CacheKind kind, int set, int way)
+    {
+        var lines = _caches[(int)kind] ?? throw new InvalidOperationException("The pipeline has no such cache.");
+        var slot = set * lines.Ways + way;
+        return (lines.Valid[slot], lines.Block[slot], lines.Used[slot]);
     }
 
     /// <summary>A byte of memory after the cycle being shown. Memory never written reads as zero.</summary>
@@ -259,6 +274,8 @@ public sealed class Session
         Array.Clear(_registers);
         _memory = new Memory();
         _lockstep = null;
+        _caches[(int)CacheKind.Instruction] = Config.InstructionCache is { } instructions ? new Lines(instructions) : null;
+        _caches[(int)CacheKind.Data] = Config.DataCache is { } data ? new Lines(data) : null;
 
         if (Program is not { } program)
         {
@@ -299,6 +316,11 @@ public sealed class Session
                         OldStore = _memory.Read(store.Address, store.Bytes),
                     };
                     break;
+                case CacheEvent access when _caches[(int)access.Kind] is { } lines:
+                    var slot = access.Set * lines.Ways + access.Way;
+                    var was = new Line(true, slot, lines.Valid[slot], lines.Block[slot], lines.Used[slot]);
+                    change = access.Kind == CacheKind.Instruction ? change with { Instructions = was } : change with { Data = was };
+                    break;
             }
         }
 
@@ -316,6 +338,11 @@ public sealed class Session
                     break;
                 case MemWriteEvent store:
                     _memory.Write(store.Address, store.Bytes, store.Value);
+                    break;
+                case CacheEvent access when _caches[(int)access.Kind] is { } lines:
+                    // Hit or miss, the block is in that way now and has just been used.
+                    var slot = access.Set * lines.Ways + access.Way;
+                    (lines.Valid[slot], lines.Block[slot], lines.Used[slot]) = (true, access.Block, record.Cycle);
                     break;
             }
         }
@@ -335,9 +362,37 @@ public sealed class Session
             _memory.Write(change.StoreAddress, change.StoreBytes, change.OldStore);
         }
 
+        Restore(_caches[(int)CacheKind.Instruction], change.Instructions);
+        Restore(_caches[(int)CacheKind.Data], change.Data);
         Stats.Remove(record);
+
+        static void Restore(Lines? lines, in Line was)
+        {
+            if (lines is not null && was.Touched)
+            {
+                (lines.Valid[was.Slot], lines.Block[was.Slot], lines.Used[was.Slot]) = (was.Valid, was.Block, was.Used);
+            }
+        }
     }
 
+    /// <param name="Instructions">The way of the instruction cache the cycle used, as it was before.</param>
+    /// <param name="Data">The same for the data cache. A cycle asks each cache at most once.</param>
     private readonly record struct Change(
-        byte Register, uint OldRegister, byte StoreBytes, uint StoreAddress, uint OldStore, int ConsoleLength);
+        byte Register, uint OldRegister, byte StoreBytes, uint StoreAddress, uint OldStore, int ConsoleLength,
+        Line Instructions = default, Line Data = default);
+
+    /// <summary>One way of a cache as it was before a cycle used it.</summary>
+    private readonly record struct Line(bool Touched, int Slot, bool Valid, uint Block, ulong Used);
+
+    /// <summary>What a cache holds, way by way, as the records have said.</summary>
+    private sealed class Lines(CacheConfig config)
+    {
+        public int Ways { get; } = config.Ways;
+
+        public bool[] Valid { get; } = new bool[config.Sets * config.Ways];
+
+        public uint[] Block { get; } = new uint[config.Sets * config.Ways];
+
+        public ulong[] Used { get; } = new ulong[config.Sets * config.Ways];
+    }
 }

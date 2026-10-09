@@ -130,8 +130,23 @@ public class ShareLinkTests
         var config = new PipelineConfig { Hazards = HazardHandling.StallOnly, Branches = BranchDecision.Decode, Predictor = Predictor.TwoBit, BtbEntries = 256, MulDivCycles = 3 };
 
         Assert.Equal(
-            "hazards=stall\nbranch=id\npredictor=2-bit\nbtb=256\nmuldiv=3\ncycle=42\ncheck=af63dc4c8601ec8c\n\na",
+            "hazards=stall\nbranch=id\npredictor=2-bit\nbtb=256\nmuldiv=3\nicache=off\ndcache=off\ncycle=42\ncheck=af63dc4c8601ec8c\n\na",
             Inflate(ShareLink.Encode(new Shared("a", config, 42))));
+
+        var cached = config with { InstructionCache = new CacheConfig(4, 1, 16, 10), DataCache = new CacheConfig(8, 4, 32, 3) };
+        Assert.Contains("\nicache=4x1x16:10\ndcache=8x4x32:3\n", Inflate(ShareLink.Encode(new Shared("a", cached, 42))));
+        Assert.Equal(cached, Decoded(ShareLink.Encode(new Shared("a", cached, 42))).Config);
+
+        // A link made before a link said anything about caches has neither line. It still
+        // opens, and means a pipeline with neither cache: this is what one held.
+        var before = Decoded(Forge("hazards=stall\nbranch=id\npredictor=2-bit\nbtb=256\nmuldiv=3\ncycle=42\ncheck=af63dc4c8601ec8c\n\na"));
+        Assert.Equal((config, 42ul, "a"), (before.Config, before.Cycle, before.Source));
+
+        // A cache that is not one, or that could not be built, is a setting there is not.
+        foreach (var bad in new[] { "icache=on", "dcache=3x1x8:1", "dcache=4x1x8:0", "icache=4x1x8:01x", "dcache=" })
+        {
+            Assert.Equal(LinkProblem.UnknownSettings, Refused(Forge(Header("a", change: bad))));
+        }
     }
 
     [Theory]

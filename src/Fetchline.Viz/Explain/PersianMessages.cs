@@ -58,6 +58,18 @@ public sealed class PersianMessages : IMessages
         CultureInfo.InvariantCulture,
         $"{cache}: {accesses} دسترسی، {misses} فقدان، {(accesses == 0 ? 0 : 100.0 * misses / accesses):0.0} درصد");
 
+    public string CacheHeading(CacheKind kind) => kind == CacheKind.Instruction ? "نهان دستور" : "نهان داده";
+
+    public string CacheTitle => "حافظه‌ی نهان";
+
+    // The cache is drawn as text in columns, like the comparison, so its headings are kept to
+    // characters one cell wide: the terms a datasheet uses.
+    public string SetHeading => EnglishMessages.Instance.SetHeading;
+
+    public string WayHeading(int way) => EnglishMessages.Instance.WayHeading(way);
+
+    public string CacheLegend => "هر راه بلوکی را نگه می‌دارد که از نشانیِ نوشته‌شده آغاز می‌شود. روشن: در این چرخه به کار رفت، و با ! اگر باید آورده می‌شد. کم‌رنگ: نخستین بلوکی که بیرون گذاشته می‌شود.";
+
     public string EachWith(string caches) => $"هر سطر با {caches}";
 
     public string CacheMissesHeading(CacheKind kind) => "فقدان‌های " + NameOf(kind);

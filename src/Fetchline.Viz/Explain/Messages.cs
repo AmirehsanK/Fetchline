@@ -55,6 +55,20 @@ public interface IMessages
     /// <summary>Under a trace: how often a cache was asked and how often it did not have the block.</summary>
     string CacheSummary(string cache, int accesses, int misses);
 
+    /// <summary>The name of the switch for a cache, as short as the others.</summary>
+    string CacheHeading(CacheKind kind);
+
+    /// <summary>The title of the pane that shows what the caches hold.</summary>
+    string CacheTitle { get; }
+
+    /// <summary>The headings of that pane: the column of set numbers, and a column for each way.</summary>
+    string SetHeading { get; }
+
+    string WayHeading(int way);
+
+    /// <summary>Under the cache: how to read it.</summary>
+    string CacheLegend { get; }
+
     /// <summary>Under a comparison whose every row has caches: which, described as they are typed.</summary>
     string EachWith(string caches);
 
@@ -410,6 +424,16 @@ public sealed class EnglishMessages : IMessages
     public string CacheSummary(string cache, int accesses, int misses) => string.Create(
         CultureInfo.InvariantCulture,
         $"{cache}: {Count(accesses, "access", "accesses")}, {Count(misses, "miss", "misses")} ({Rate(accesses, misses):0.0}%)");
+
+    public string CacheHeading(CacheKind kind) => kind == CacheKind.Instruction ? "icache" : "dcache";
+
+    public string CacheTitle => "CACHE";
+
+    public string SetHeading => "set";
+
+    public string WayHeading(int way) => string.Create(CultureInfo.InvariantCulture, $"way {way}");
+
+    public string CacheLegend => "Each way holds the block that begins at the address shown. Lit: used this cycle, with ! if it had to be brought in. Dim: the next to be put out.";
 
     public string EachWith(string caches) => $"each with {caches}";
 

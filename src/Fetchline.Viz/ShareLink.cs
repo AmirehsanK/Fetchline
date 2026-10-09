@@ -84,7 +84,8 @@ public static class ShareLink
             CultureInfo.InvariantCulture,
             $"hazards={SwitchNames.Of(shared.Config.Hazards)}\nbranch={SwitchNames.Of(shared.Config.Branches)}\n" +
             $"predictor={SwitchNames.Of(shared.Config.Predictor)}\nbtb={shared.Config.BtbEntries}\n" +
-            $"muldiv={shared.Config.MulDivCycles}\ncycle={shared.Cycle}\ncheck={Check(source)}\n\n");
+            $"muldiv={shared.Config.MulDivCycles}\nicache={SwitchNames.Of(shared.Config.InstructionCache)}\n" +
+            $"dcache={SwitchNames.Of(shared.Config.DataCache)}\ncycle={shared.Cycle}\ncheck={Check(source)}\n\n");
 
         using var packed = new MemoryStream();
         using (var deflate = new DeflateStream(packed, CompressionLevel.SmallestSize, leaveOpen: true))
@@ -188,6 +189,13 @@ public static class ShareLink
                     break;
                 case "muldiv" when Number(value) is { } cycles && cycles <= PipelineConfig.MaxMulDivCycles:
                     config = config with { MulDivCycles = (int)cycles };
+                    break;
+                // A link made before there were caches has neither line, and means neither cache.
+                case "icache" when SwitchNames.TryParseCache(value, out var instructions, out _):
+                    config = config with { InstructionCache = instructions };
+                    break;
+                case "dcache" when SwitchNames.TryParseCache(value, out var data, out _):
+                    config = config with { DataCache = data };
                     break;
                 case "cycle" when Number(value) is { } at && at <= MostCycle:
                     cycle = at;
