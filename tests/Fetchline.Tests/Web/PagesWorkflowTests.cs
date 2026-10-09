@@ -2,21 +2,21 @@ namespace Fetchline.Tests.Web;
 
 /// <summary>
 /// The workflow that publishes the playground. It cannot be run from here, so what can be read
-/// off it is: that it waits to be started, and that the line it rewrites is in the page.
+/// off it is: when it runs, that it tests before it publishes, and that the line it rewrites is
+/// in the page.
 /// </summary>
 public class PagesWorkflowTests
 {
     private static readonly string Workflow = File.ReadAllText(Repo.PathOf(".github", "workflows", "pages.yml"));
 
     [Fact]
-    public void ItRunsOnlyWhenSomeoneStartsIt()
+    public void ItRunsOnEveryPushToMainAndWhenSomeoneStartsIt()
     {
-        // Publishing is the owner's decision: until Pages is switched on, a run on every push
-        // would only be a failure on every push.
+        // The owner asked for every push to publish. A push to any other branch does not.
         var triggers = Workflow[Workflow.IndexOf("\non:\n", StringComparison.Ordinal)..Workflow.IndexOf("\npermissions:", StringComparison.Ordinal)];
         var live = triggers.Split('\n').Where(line => line.Length > 0 && !line.TrimStart().StartsWith('#')).ToArray();
 
-        Assert.Equal(["on:", "  workflow_dispatch:"], live);
+        Assert.Equal(["on:", "  push:", "    branches: [main]", "  workflow_dispatch:"], live);
     }
 
     [Fact]

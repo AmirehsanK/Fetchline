@@ -1,14 +1,13 @@
 name: Pages
 
-# Publishes the playground to GitHub Pages. It runs only when someone starts it by hand, from
-# the Actions tab or with "gh workflow run pages.yml", and it can only succeed once Pages has
-# been switched on for the repository with GitHub Actions as its source (Settings, Pages).
-# Switching Pages on is the owner's decision, and so is making this run on every push: that is
-# the two lines marked below.
+# Publishes the playground to GitHub Pages on every push to main, and when someone starts it
+# by hand. The owner switched Pages on, with GitHub Actions as its source, on 9 October 2026
+# and asked the same day for every push to publish. Nothing is published that fails its tests:
+# the build job runs them first, on the commit it is about to publish.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-  # push:
-  #   branches: [main]
 
 permissions:
   contents: read

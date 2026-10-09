@@ -25,15 +25,23 @@ if ($LASTEXITCODE -ne 0) {
 $files = Get-ChildItem (Join-Path $site 'wwwroot') -Recurse -File
 $plain = $files | Where-Object { $_.Extension -notin '.br', '.gz' }
 
-function Total($extension) {
-    ($files | Where-Object { $_.Extension -eq $extension } | Measure-Object Length -Sum).Sum
+# What a server sends for a set of files when it compresses one way. A file that publishing
+# made no compressed copy of, such as a font that is compressed already, is sent as it is.
+function Sent($set, $extension) {
+    ($set | ForEach-Object {
+        $copy = $_.FullName + $extension
+        if (Test-Path $copy) { (Get-Item $copy).Length } else { $_.Length }
+    } | Measure-Object -Sum).Sum
 }
 
 '{0} files: {1:N0} bytes as they are, {2:N0} with gzip, {3:N0} with Brotli' -f `
-    $plain.Count, ($plain | Measure-Object Length -Sum).Sum, (Total '.gz'), (Total '.br')
+    $plain.Count, ($plain | Measure-Object Length -Sum).Sum, (Sent $plain '.gz'), (Sent $plain '.br')
 
 # What is Fetchline's own and what is the .NET runtime it runs on.
 $ours = $plain | Where-Object { $_.Name -like 'Fetchline.*' -or $_.DirectoryName -notlike '*_framework*' }
-$oursBrotli = ($ours | ForEach-Object { (Get-Item ($_.FullName + '.br')).Length } | Measure-Object -Sum).Sum
-'of which Fetchline itself: {0:N0} bytes as they are, {1:N0} with Brotli' -f `
-    ($ours | Measure-Object Length -Sum).Sum, $oursBrotli
+'of which Fetchline itself: {0:N0} bytes as they are, {1:N0} with gzip, {2:N0} with Brotli' -f `
+    ($ours | Measure-Object Length -Sum).Sum, (Sent $ours '.gz'), (Sent $ours '.br')
+
+# The Persian face is fetched only by a reader who switches to Persian.
+$late = $plain | Where-Object { $_.Extension -eq '.woff2' }
+'of which only a Persian page fetches: {0:N0} bytes' -f ($late | Measure-Object Length -Sum).Sum

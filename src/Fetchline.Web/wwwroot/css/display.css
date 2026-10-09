@@ -1257,12 +1257,23 @@ body {
     left to right across the pipeline, and code and hex are read the way they are written.
     The lettering on the case is the case's own and stays as it was moulded.
 
-    Persian is set in Vazirmatn or Sahel where the reader has one of them, and otherwise in
-    whatever face the system gives its own interface; a terminal's face has no Persian letters
-    worth reading. Whatever keeps its direction keeps the monospaced face too.
+    Persian is set in Vazirmatn, which comes with the page: a terminal's face has no Persian
+    letters worth reading. The face is asked for only for Persian letters and their marks, so
+    the names and numbers inside a Persian sentence are still in the tube's own face, and a
+    reader who never switches to Persian never downloads it. Whatever keeps its direction
+    keeps the monospaced face throughout.
 */
+@font-face {
+    font-family: "Vazirmatn";
+    src: local("Vazirmatn"), url("../fonts/Vazirmatn-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0600-06FF, U+0750-077F, U+200C-200D, U+FB50-FDFF, U+FE70-FEFF;
+}
+
 :root[dir="rtl"] .glass {
-    font-family: Vazirmatn, Sahel, "Segoe UI", Tahoma, var(--mono);
+    font-family: "Vazirmatn", var(--mono);
 }
 
 :root[dir="rtl"] :is(.staircase, .datapath, .editor, .problems, .register-grid, .dump, .console, .compare, .timeline input, .switch .tab, .status > .inverse, .boot, .softkey-fn),

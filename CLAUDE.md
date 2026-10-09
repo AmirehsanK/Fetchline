@@ -9,9 +9,9 @@ was validated; it is written alongside the engine, one mechanism at a time.
 
 The repository is <https://github.com/AmirehsanK/Fetchline>. The owner made it public on
 9 October 2026 and switched Pages on; the playground is live at
-<https://amirehsank.github.io/Fetchline/>. The Pages workflow is still started by hand
-(`gh workflow run pages.yml`), so the live site is whatever was last published, not the last
-push: publish again after a change to what is shipped, and say so.
+<https://amirehsank.github.io/Fetchline/>. Since the owner asked for it the same day, the Pages workflow
+runs on every push to `main`: **a push publishes**, once its tests pass there. So look at a
+change to the playground in a browser before pushing it, not after.
 
 ## Environment facts
 
@@ -53,9 +53,8 @@ dotnet run tools/serve.cs -- ../artifacts/site/wwwroot 5196   # serve what was p
 is why the path it is given begins with `..`. The download figures in `docs/CPU.md` 8.1 come
 from the first of these two; measure again after anything that changes what is shipped.
 
-`.github/workflows/pages.yml` publishes the playground to GitHub Pages. It runs only when it is
-started by hand, and only works once the owner has switched Pages on with GitHub Actions as its
-source. It rewrites the page's `<base href>` to the folder a project's pages are served from; the
+`.github/workflows/pages.yml` publishes the playground to GitHub Pages on every push to `main`,
+after running the tests. It rewrites the page's `<base href>` to the folder a project's pages are served from; the
 preview configuration `fetchline-pages` serves `artifacts/pages` on port 5197 for trying that by
 hand (copy the published `wwwroot` into `artifacts/pages/Fetchline` and change the line).
 
@@ -88,7 +87,8 @@ file and read the file instead.
   can be tested without a browser. The look is one stylesheet, `wwwroot/css/display.css`, whose
   first block holds the tokens. `DisplayStylesheetTests` reads it and fails if a phosphor's text
   drops below 4.5 to 1, if the plain switch leaves an effect on, or if a font or script is
-  fetched from another site.
+  fetched from another site. The one face the page brings is Vazirmatn, for Persian, in
+  `wwwroot/fonts` with its licence; the owner asked for it. Another bundled face is another ask.
 
 ## Load-bearing decisions that look optional but are not
 
@@ -119,5 +119,4 @@ The owner asked on 8 October 2026 for each milestone to be split into smaller se
 each section to be committed and pushed. `docs/SPEC.md` section 10 lists the sections; tick a box
 in the commit that finishes it. Commit only what builds and passes `dotnet test`.
 
-Changing the repository's settings, making the Pages workflow run on every push and downloading
-a font are outward-facing: ask first.
+Changing the repository's settings and downloading another font are outward-facing: ask first.

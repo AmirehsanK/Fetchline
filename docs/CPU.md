@@ -421,17 +421,19 @@ machine only when it is a stop. Together they took a run from 4.64 ms to 3.77 ms
 Taken with `pwsh tools/site-size.ps1` on 9 October 2026, which publishes the playground in
 Release (trimmed, .NET 10.0.11, without the `wasm-tools` workload) and adds up what was
 published. Publishing writes a gzip and a Brotli copy beside every file, so the three columns
-are the same 45 files three ways, and the first visit downloads all of them.
+are the same 47 files three ways; a file with no compressed copy, which is the font, counts as
+it is. A first visit in English downloads all of them but the font and its licence.
 
 | What | As they are | With gzip | With Brotli |
 |---|---|---|---|
-| Everything a first visit downloads | 6,815,446 bytes | 2,705,130 | 2,219,595 |
+| Everything a first visit downloads | 6,870,927 bytes | 2,757,962 | 2,272,114 |
 | The .NET runtime, `dotnet.native.wasm` | 3,002,094 | 1,207,892 | 976,842 |
 | The core library, `System.Private.CoreLib` | 1,482,005 | 567,151 | 458,277 |
-| Fetchline itself: the engine, `Fetchline.Viz`, the page, its stylesheet and scripts | 466,505 | 194,015 | 158,420 |
+| Fetchline itself: the engine, `Fetchline.Viz`, the page, its stylesheet and scripts | 521,986 | 246,839 | 210,920 |
+| Of that, the Persian face, fetched only by a page switched to Persian | 50,684 | 50,684 | 50,684 |
 
 So the download is 2.2 MB from a server that sends Brotli and 2.7 MB from one that sends gzip,
-and one part in fourteen of it is Fetchline; the rest is the runtime it runs on. The engine was
+and one part in eleven of it is Fetchline; the rest is the runtime it runs on. The engine was
 kept free of package references partly for this: `Fetchline.Core` is 201 KB as it is and 68 KB
 compressed. Share links brought in the one library that was not there before them,
 `System.IO.Compression`, which is 27 KB as it is and 10 KB compressed. The runtime's share

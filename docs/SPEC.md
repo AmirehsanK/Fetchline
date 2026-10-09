@@ -389,11 +389,13 @@ computer, not as a modern web app.
   is nothing to skip, and a later visit with the engine cached hardly sees it.
 - **Rules that keep it usable:** a "plain display" switch turns every effect off;
   `prefers-reduced-motion` turns off flicker and blinking; text contrast stays at WCAG AA on each
-  phosphor colour; nothing is conveyed by an effect alone. Persian text uses Sahel or Vazirmatn
-  where the reader has one of them installed, and otherwise the face the system gives its own
-  interface, because retro bitmap faces have no Persian glyphs, while code, registers and
-  diagrams keep the monospace face. Neither face is shipped with the page: bundling one is a
-  download, and so the owner's decision.
+  phosphor colour; nothing is conveyed by an effect alone. Persian text is set in Vazirmatn,
+  because retro bitmap faces have no Persian glyphs, while code, registers and diagrams keep the
+  monospace face. Vazirmatn comes with the page (the owner asked for it on 9 October 2026): one
+  file of 51 KB, version 33.003, under the SIL Open Font License, whose text is beside it. The
+  stylesheet asks for it only for Persian letters and their marks, so the names and numbers in
+  a Persian sentence stay in the tube's own face, and a reader who never switches to Persian
+  never downloads it. It is the only face the page brings, and nothing comes from another site.
 - The look is one stylesheet of tokens (colours, glow, scanline strength), so it does not leak
   into the engine or `Fetchline.Viz`. A test reads it and holds it to the rules above: each
   phosphor's normal, dim and bright text at 4.5 to 1 or better against its unlit glass, every
@@ -543,7 +545,7 @@ the live site is checked by hand in both languages and a Kanata file opens in Ko
 - [x] 9.1 Exports: the trace as JSON and as Kanata, the staircase as SVG and PNG
 - [x] 9.2 The Persian catalog, and a right-to-left page whose diagrams stay left to right
 - [x] 9.3 The README with real screenshots, and `docs/CPU.md` complete
-- [x] 9.4 The Pages workflow (switching Pages on is the owner's decision)
+- [x] 9.4 The Pages workflow (the owner switched Pages on, and then asked for every push to publish)
 - [x] 9.5 The live site checked by hand in both languages; a Kanata file opened in Konata
 
 **M10. The depth track: a cache simulator.** (The owner chose it on 9 October 2026 from a
@@ -607,6 +609,8 @@ it and an example that teaches it.
 | Phosphor colour and whether a specific machine is the model for the look | Green, no specific machine | M7 |
 | Whether the repository is public | Public since 9 October 2026, with Pages on | M9, because Pages on a private repository needs a paid plan |
 | Persian UI | Yes | M9 |
+| A bundled face for Persian | Vazirmatn, bundled (asked for 9 October 2026) | M9 |
+| When the playground is published | On every push to main (asked for 9 October 2026) | M9 |
 | The depth track | The cache simulator (chosen 9 October 2026) | M10 |
 
 ## 14. Sources

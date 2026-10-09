@@ -160,17 +160,41 @@ public partial class DisplayStylesheetTests
     }
 
     [Fact]
-    public void TheTubeUsesOnlyFacesThatAreAlreadyOnTheReadersMachine()
+    public void TheOnlyFaceThatComesWithThePageIsThePersianOneAndNothingIsFetchedFromElsewhere()
     {
-        // A bundled font needs the owner's yes. Until then nothing is fetched: no @font-face,
-        // no stylesheet or script from another site.
+        // The owner asked on 9 October 2026 for Vazirmatn to be bundled. It is the one face the
+        // page brings; everything else is a face the reader already has. Nothing at all, no
+        // font, stylesheet or script, comes from another site.
         var page = File.ReadAllText(Path.Combine(Root, "index.html"));
 
-        Assert.DoesNotContain("@font-face", Css);
         Assert.DoesNotContain("@import", Css);
-        Assert.DoesNotContain("url(", Css);
+        Assert.DoesNotContain("http://", Css);
+        Assert.DoesNotContain("https://", Css);
+        Assert.DoesNotContain("//", string.Concat(FontUrl().Matches(Css).Select(match => match.Groups[1].Value)));
         Assert.DoesNotContain("http://", page);
         Assert.DoesNotContain("https://", page);
         Assert.Contains("monospace", Value(Rule(":root"), "--mono"));
+
+        // One face, one file, and the file is there and is what it says it is.
+        var face = Assert.Single(FontFace().Matches(Css)).Groups[1].Value;
+        Assert.Contains("font-family: \"Vazirmatn\"", face);
+        var url = Assert.Single(FontUrl().Matches(Css)).Groups[1].Value;
+        Assert.Equal("../fonts/Vazirmatn-Regular.woff2", url);
+        var file = Path.Combine(Root, "fonts", "Vazirmatn-Regular.woff2");
+        Assert.Equal("wOF2"u8.ToArray(), File.ReadAllBytes(file)[..4]);
+
+        // It is asked for only for Persian letters, so a reader of the English page, and the
+        // Latin letters of the Persian one, never use it.
+        Assert.Contains("unicode-range: U+0600-06FF", face);
+        Assert.Equal("\"Vazirmatn\", var(--mono)", Value(Rule(":root[dir=\"rtl\"] .glass"), "font-family"));
+
+        // Its licence asks to travel with it.
+        Assert.Contains("SIL Open Font License", File.ReadAllText(Path.Combine(Root, "fonts", "OFL.txt")));
     }
+
+    [GeneratedRegex(@"@font-face\s*\{([^}]*)\}")]
+    private static partial Regex FontFace();
+
+    [GeneratedRegex(@"url\(""([^""]*)""\)")]
+    private static partial Regex FontUrl();
 }
