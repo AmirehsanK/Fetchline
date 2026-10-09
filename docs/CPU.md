@@ -453,3 +453,38 @@ registers and log, and the same counters: 91 instructions, 51 stalls, 12 flushes
 which 12 guessed wrong. Pasting a link over the address of a page that is already open loads it
 too, and one with two characters changed is refused with `THE LINK COULD NOT BE READ: IT IS
 DAMAGED` while what was on screen stays.
+
+## 9. What is drawn, shared and saved
+
+Nothing in the visualizer looks inside the machine. Each of these is made from the cycle
+records, in `Fetchline.Viz`, where it is tested without a browser; the page only draws it.
+
+- **The diagram.** One piece of code places every character of the staircase, for the terminal
+  and for the page, and the golden files under `tests/golden` are its output. The page adds the
+  lines of the forwards; a picture of the diagram is the same grid placed cell by cell, so its
+  columns line up whatever face draws it.
+- **The datapath.** Section 6 says how the wires are held to the records. What is lit is decided
+  by the instruction's control signals and the cycle's events, which are the engine's own.
+- **Share links.** A link is `1.` and then the source, the switches and the cycle, deflated and
+  written in the alphabet that needs no escaping in an address. It is untrusted input, so
+  reading one is the careful half: the text is capped at 48,000 characters before anything is
+  decoded, what it inflates to is capped at 128,000 bytes while it inflates, numbers are read
+  strictly, a setting the encoder never writes is refused, and so is a cycle past 250,000. A
+  link carries a check of its source, so one that lost its end in a chat window is refused and
+  does not quietly run some shorter program. The tests take a good link and damage it 6,000
+  ways, feed the reader random text, forged headers and a small link that inflates to far too
+  much; every one is refused with a reason, and none throws.
+- **Exports.** The JSON is the record stream written out, with each instruction as text beside
+  its word; a test reads it back and finds the stall, the forward and the end of the run where
+  the records have them. The Kanata log follows Konata's own description of the format, and a
+  test holds it to that description on the examples built three ways: ids count up from zero in
+  the order instructions appear, a stage is ended before the next begins, every instruction is
+  retired or flushed exactly once, and the two counts are the run's instructions and its
+  squashed instructions. The log of the load-use hazard is kept as a golden file. Opening one
+  in Konata itself is the one check that is left to a person.
+- **Two languages.** A message is a method of an interface, so a language that lacks one does
+  not compile. A test goes through every message of both catalogs, more than 150 with each
+  value of each enumeration, and checks that it says something and that every name or number
+  it was given is still in what it says. Another checks that the Persian catalog is in Persian
+  wherever it is a sentence, and that the comparison table, which is text in columns, keeps to
+  characters one cell wide in Persian too.

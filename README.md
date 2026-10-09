@@ -6,9 +6,11 @@ Fetchline runs RV32IM programs on a five-stage pipeline and explains what the pi
 them: every stall, flush and forward is an event with a cause, drawn as the textbook diagram and
 written as a sentence. The same engine runs in the terminal, in the tests and in the browser.
 
-**Status: under construction.** The command line and the engine are complete and verified; the
-browser playground runs, and is being filled in. The milestones and what each one has to prove
-are in [docs/SPEC.md](docs/SPEC.md); the list there is ticked as each section lands.
+![The playground: source, pipeline diagram, hazard log, registers and counters on one screen](docs/img/playground.jpg)
+
+The engine, the command line and the playground are complete and verified. What each milestone
+had to prove is in [docs/SPEC.md](docs/SPEC.md), and how each mechanism works and was checked is
+in [docs/CPU.md](docs/CPU.md).
 
 ## Build
 
@@ -19,17 +21,58 @@ dotnet build
 dotnet test
 ```
 
-## Try it
+## The playground
 
-The playground is the same engine in the browser, on the screen of an old computer: an editor,
-the pipeline diagram with its forwards drawn in, the hazard log, registers, memory and counters,
-and a run you can step forwards and backwards.
+The playground is the engine in the browser, on the screen of an old computer: an editor, the
+pipeline diagram with its forwards drawn in, the hazard log, registers, memory, the console and
+the counters, and a run you can step forwards and backwards.
 
 ```bash
 dotnet run --project src/Fetchline.Web --launch-profile http
 ```
 
-Then open <http://localhost:5195>. It is not published anywhere yet. The same thing in a terminal:
+Then open <http://localhost:5195>. It is not published anywhere yet. Everything is on the keys
+under the screen, which are real function keys too:
+
+| Key | What it does |
+|---|---|
+| `F5` | Run, and pause |
+| `F10`, `F9` | Step one cycle forwards, or back |
+| `F8` | Back to reset |
+| `F6` | How fast a run goes |
+| `F7` | The program on the pipeline built every way, as a table; choosing a row builds it that way |
+| `F4` | The datapath in place of the diagram |
+| `F2` | A link to what is on screen: the source, the switches and the cycle |
+
+The switches above the diagram build the pipeline another way (forwarding, stalling only or no
+hazard handling at all; branches decided in EX or in ID; four predictors; a multiplier of one
+cycle or three) and start the run again. The timeline goes to any cycle that has been run, and a
+line of the log goes to the cycle it happened in.
+
+`F4` shows the datapath of the pipeline as the switches have built it. The wires in use in the
+cycle on screen are the bright ones, and pointing at one says what is on it. Here the `add` in EX
+is taking the value the `lw` ahead of it has just read, from MEM/WB, a cycle after the load-use
+stall:
+
+![The datapath in the cycle a loaded value is forwarded from MEM/WB to the ALU](docs/img/datapath.png)
+
+The `EXPORT` menu saves the run as far as the cycle on screen: the trace as JSON or as a Kanata
+log for [Konata](https://github.com/shioyadan/Konata), the diagram as SVG or PNG. This is the
+SVG of the load-use hazard, as it was written:
+
+![The pipeline diagram of the load-use hazard, exported as SVG](docs/img/load-use.svg)
+
+The `LANGUAGE` switch on the monitor turns the page to Persian. It then runs from the right, and
+the diagrams, the code and the dumps stay the way they are read:
+
+![The playground in Persian](docs/img/persian.jpg)
+
+The colour of the phosphor is a switch as well, and `PLAIN` turns off the scanlines, the glow
+and the flicker.
+
+## The command line
+
+The same run in a terminal:
 
 ```bash
 dotnet run --project src/Fetchline.Cli -- trace examples/load-use.s
@@ -56,6 +99,8 @@ instruction by instruction.
 The pipeline can be built other ways, and each way is a switch: `--hazards forwarding|stall|off`,
 `--branch ex|id`, `--predictor not-taken|backward-taken|1-bit|2-bit` with `--btb` entries, and
 `--muldiv` cycles for a multiply or a divide. `trace` draws a run with the switches it is given.
+`trace --format svg|json|kanata` writes the picture or the whole trace in place of the text, and
+`--output` names a file for it.
 `compare` runs the program on every combination of the ones it is not given:
 
 ```bash
